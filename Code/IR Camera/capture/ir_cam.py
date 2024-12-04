@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 # Open the file containing the camera's calibration vals
-fs = cv2.FileStorage('calibration/calib_params.xml', cv2.FILE_STORAGE_READ)
+fs = cv2.FileStorage('Code/IR Camera/calibration/calib_params.xml', cv2.FILE_STORAGE_READ)
 
 # Read the calibration vals and save as vars
 mtx = fs.getNode("mtx").mat()

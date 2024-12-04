@@ -14,16 +14,16 @@ from PySide6.QtWidgets import QApplication, QLabel, QMainWindow
 num_trials = 10  # number of trials to run
 ISI = 0.25  # 250 ms inter-stimulus interval
 ITI = 10  # 10 second inter-trial interval
-arduino_port = '/dev/cu.usbserial-01C60315'  # Match this to Arduino's port, check by running 'ls /dev/cu.*' in terminal on Mac
+arduino_port = 'COM4'  # '/dev/cu.usbserial-01C60315'  # Match this to Arduino's port, check by running 'ls /dev/cu.*' in terminal on Mac
 baud_rate = 9600  # arduino baud rate
 frequency = 880.0  # Frequency in Hz (A5) of CS
 tone_duration = 0.3     # Duration in seconds of CS
 sample_rate = 44100  # Sample rate in Hz of CS
-stability_threshold = 0.75  # FEC value that eye must stay above for at least 200 ms before starting next trial
+stability_threshold = 0.25  # FEC value that eye must stay below for at least 200 ms before starting next trial
 stability_duration = 0.2  # 200 ms in seconds of stability check
 
 # Open the file containing the camera's calibration vals
-fs = cv2.FileStorage('calibration/calib_params.xml', cv2.FILE_STORAGE_READ)
+fs = cv2.FileStorage('Code/IR Camera/calibration/calib_params.xml', cv2.FILE_STORAGE_READ)
 
 # Read camera calibration vals and save as vars
 mtx = fs.getNode("mtx").mat()
@@ -37,7 +37,7 @@ ser = serial.Serial(arduino_port, baud_rate)
 time.sleep(2)  # Wait for the connection to establish
 
 # Mouse ID
-mouse_id = input("Please input the mouse's ID")
+mouse_id = input("Please input the mouse's ID: ")
 
 print('Successfully established serial connection to arduino.')
 
@@ -213,7 +213,7 @@ class VideoWindow(QMainWindow):
         start_time = None
 
         while self.running:
-            if self.light_fraction > stability_threshold:  # If eye is open
+            if self.light_fraction < stability_threshold:  # If eye is >= 75% open (or < 25% closed)
                 if start_time is None:
                     start_time = time.time()
                 elif time.time() - start_time >= stability_duration:  # Break loop if eyes stays open longer than 200 ms
@@ -222,7 +222,8 @@ class VideoWindow(QMainWindow):
             else:
                 start_time = None  # Reset if the mouse blinks
 
-            time.sleep(0.01)  # Check every 10 ms
+            # Check every 10 ms
+            time.sleep(0.01)
     
     def __stimuli(self):
         """Run eyeblink experiment
@@ -268,11 +269,11 @@ class VideoWindow(QMainWindow):
         """Save csv's, close window and clean up
         """
         # Save FEC dataframe as csv
-        fec_file = f"FEC/mouse_{mouse_id}_fec.csv"
+        fec_file = f"Code/IR Camera/FEC/mouse_{mouse_id}_fec.csv"
         self.df_fec.to_csv(fec_file, index=False)
         
         # Save stimuli dataframe as csv
-        stim_file = f"stim/mouse_{mouse_id}_stim.csv"
+        stim_file = f"Code/IR Camera/stim/mouse_{mouse_id}_stim.csv"
         self.df_stim.to_csv(stim_file, index=False)
         
         # Clean up
