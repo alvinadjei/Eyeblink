@@ -2,6 +2,7 @@ import sys
 import time
 import serial
 import threading
+from multiprocessing import Process, Queue
 import sounddevice as sd
 import cv2
 import numpy as np
@@ -82,7 +83,26 @@ class VideoWindow(QMainWindow):
         
         # Dataframe to hold CS and US timestamps
         self.df_stim = pd.DataFrame(columns=['Trial #', 'CS Timestamp', 'US Timestamp'])  # Create df to hold CS and US timestamps for each trial
-        
+
+    def start_fec_process(self):
+        """Start the FEC acquisition process."""
+        self.running_event.set()
+        self.fec_process = Process(
+            target=fec_acquisition,
+            args=(self.fec_queue, self.running_event, self.trial_in_progress_event, self.get_frame),
+        )
+        self.fec_process.start()
+
+    def stop_fec_process(self):
+        """Stop the FEC acquisition process."""
+        self.running_event.clear()
+        self.fec_process.join()
+        self.fec_process = None
+    
+    def get_frame(self):
+        """Retrieve the current processed frame for the FEC process."""
+        return self.frame if self.frame is not None else None
+
     def update_frame(self):
         """Update and show frame, elliptical ROI, and FEC value
         """
@@ -178,28 +198,46 @@ class VideoWindow(QMainWindow):
                 if not self.running:  # Only start a new thread if not already running
                     self.running = True
                     print('Beginning experiment...')
-                    threading.Thread(target=self.__save_current_fec).start()  # Save images during trial
-                    threading.Thread(target=self.__stimuli).start()  # Send stimuli
+                    self.start_fec_process()  # Start the FEC process
+                    threading.Thread(target=self.__stimuli).start()
                 else:
                     self.running = False  # Stop experiment
                     print('Stopping experiment...')
+                    self.stop_fec_process()  # Stop the FEC process
                     self.close()
             else:
                 print("Please draw an ellipse around the mouse's eye, then press the spacebar to begin.")
+    
+    def calculate_fec(self, frame):
+        """Calculate the light fraction from the given frame."""
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        _, binary = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
+        fec = cv2.countNonZero(binary) / (binary.shape[0] * binary.shape[1])
+        return fec
+
+    def fec_acquisition(self, queue, running_event, trial_in_progress_event, frame_getter):
+        """Function to run FEC acquisition in a separate process."""
+        while running_event.is_set():
+            if trial_in_progress_event.is_set():
+                frame = frame_getter()
+                if frame is not None:
+                    fec_tick_count = cv2.getTickCount()
+                    timestamp = fec_tick_count / cv2.getTickFrequency() * 1000  # Convert to milliseconds
+                    # Assume `calculate_fec()` is a helper function to compute the FEC from the frame.
+                    self.light_fraction = self.calculate_fec(frame)  
+                    queue.put((timestamp, self.light_fraction))
+            time.sleep(0.035)  # Approx 30 FPS
     
     def __save_current_fec(self):
         """Save the current FEC to a pandas df
         """
         while self.running:
-            if self.frame is not None and self.trial_in_progress:
-                fec_tick_count = cv2.getTickCount()  # get tick count from cv2
-                timestamp = fec_tick_count / cv2.getTickFrequency() * 1000  # Convert to milliseconds
-                
-                # Add row containing current timestamp, trial number, and FEC to df_fec
-                self.df_fec.loc[len(self.df_fec)] = [timestamp, self.trial_ind, self.light_fraction]
-                
-                # Sleep until frame refreshes before continuing the loop
-                time.sleep(0.035)  # Roughly 30 fps
+            try:
+                timestamp, fec_value = self.fec_queue.get_nowait()  # Non-blocking retrieval
+                self.df_fec.loc[len(self.df_fec)] = [timestamp, self.trial_ind, fec_value]
+            except:
+                pass  # Queue is empty, continue
+            time.sleep(0.05)  # Small delay to avoid CPU overload
 
     def __cond_stim(self):
         """Executes conditioned stimulus (plays the musical tone A5 for 300ms)
@@ -279,6 +317,10 @@ class VideoWindow(QMainWindow):
     def closeEvent(self, event):
         """Save csv's, close window and clean up
         """
+
+        if self.fec_process:
+            self.stop_fec_process()
+
         # Save FEC dataframe as csv
         fec_file = f"Code/IR Camera/capture/FEC/mouse_{mouse_id}_fec.csv"
         self.df_fec.to_csv(fec_file, index=False)
