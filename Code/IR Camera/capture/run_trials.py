@@ -48,7 +48,7 @@ class VideoWindow(QMainWindow):
         super().__init__()
 
         # Initialize camera and timer
-        self.cap = cv2.VideoCapture(0)
+        # self.cap = cv2.VideoCapture(0)
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(30)  # Set to ~30 FPS
@@ -127,9 +127,9 @@ class VideoWindow(QMainWindow):
                 # Convert frame to QImage
                 q_img = QImage(frame.data, w, h, w, QImage.Format_Grayscale8)
                 
-            # Dynamically resize the window to match the image size
-            window_width, window_height = q_img.shape[1], q_img.shape[0]
-            self.resize(window_width, window_height)
+                # Dynamically resize the window to match the image size
+                window_width, window_height = w, h
+                self.resize(window_width, window_height)
         
             # Update the QLabel with the new frame
             self.image_label.setPixmap(QPixmap.fromImage(q_img))
@@ -274,7 +274,7 @@ class VideoWindow(QMainWindow):
         
         # Clean up
         self.running = False  # End experiment
-        self.cap.release()  # Release camera
+        # self.cap.release()  # Release camera
         ser.close()  # Close serial connection
         event.accept()
         
@@ -290,12 +290,15 @@ def process_camera(frame_queue, stop_flag):
             # Put the frame in the queue
             if not frame_queue.full():
                 frame_queue.put(binary_frame)
+            else:
+                frame_queue.get()  # Remove the oldest frame
+                frame_queue.put(binary_frame)
     cap.release()
 
 # Main application
 if __name__ == "__main__":
     # Create a frame queue for communication
-    frame_queue = multiprocessing.Queue(maxsize=5)
+    frame_queue = multiprocessing.Queue(maxsize=1)
 
     # Create a stop flag for the camera process
     stop_flag = multiprocessing.Event()
@@ -306,7 +309,7 @@ if __name__ == "__main__":
     
     # Start Qt app
     app = QApplication(sys.argv)
-    window = VideoWindow()
+    window = VideoWindow(frame_queue)
     window.show()
     # sys.exit(app.exec_())
     
