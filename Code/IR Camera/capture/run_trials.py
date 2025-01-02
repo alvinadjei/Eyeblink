@@ -294,8 +294,27 @@ def process_camera(frame_queue, stop_flag):
 
 # Main application
 if __name__ == "__main__":
+    # Create a frame queue for communication
+    frame_queue = multiprocessing.Queue(maxsize=5)
+
+    # Create a stop flag for the camera process
+    stop_flag = multiprocessing.Event()
+
+    # Start the camera process
+    camera_process = multiprocessing.Process(target=process_camera, args=(frame_queue, stop_flag))
+    camera_process.start()
+    
+    # Start Qt app
     app = QApplication(sys.argv)
     window = VideoWindow()
     window.show()
-    sys.exit(app.exec_())
+    # sys.exit(app.exec_())
+    
+    # Run the application event loop
+    try:
+        app.exec()
+    finally:
+        # Stop the camera process and wait for it to finish
+        stop_flag.set()
+        camera_process.join()
     
