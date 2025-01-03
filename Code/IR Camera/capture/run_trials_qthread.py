@@ -63,6 +63,55 @@ class CameraThread(QThread):
         self.running = False
         self.wait()
 
+class ExperimentThread(QThread):
+    trial_started = pyqtSignal(int)  # Signal emitted when a trial starts
+    trial_completed = pyqtSignal(int)  # Signal emitted when a trial completes
+    experiment_finished = pyqtSignal()  # Signal emitted when the experiment ends
+    stability_error = pyqtSignal(str)  # Signal for stability check failure
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.num_trials = num_trials
+        self.trial_num = 0
+        self.running = False
+
+    def run(self):
+        """Main experiment loop"""
+        self.running = True
+        try:
+            for i in range(self.num_trials):
+                if not self.running:
+                    break
+                self.trial_num = i + 1
+                self.trial_started.emit(self.trial_num)
+
+                # Run a single trial
+                self.run_trial(i)
+
+                self.trial_completed.emit(self.trial_num)
+
+        except Exception as e:
+            self.stability_error.emit(str(e))
+
+        finally:
+            self.running = False
+            self.experiment_finished.emit()
+
+    def run_trial(self, i):
+        """Run one trial"""
+        # Example: Ensure stability, trigger CS and US, handle timing
+        window.ensure_stability()  # Make sure to use `MainWindow` methods safely
+        time.sleep(0.05)  # Simulate pre-CS timing
+        timestamp_cs = window.cond_stim()
+        time.sleep(ISI)  # Inter-stimulus interval
+        timestamp_us = window.uncond_stim()
+        time.sleep(ITI)  # Inter-trial interval
+        print(f"Trial {i+1} complete.")
+
+    def stop(self):
+        """Gracefully stop the thread"""
+        self.running = False
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -87,7 +136,7 @@ class MainWindow(QMainWindow):
         self.start_button.clicked.connect(self.start_experiment)
         self.layout.addWidget(self.start_button)
 
-        # Camera thread
+        # Integrate CameraThread
         self.camera_thread = CameraThread()
         self.camera_thread.frame_ready.connect(self.update_frame)
 
@@ -108,6 +157,14 @@ class MainWindow(QMainWindow):
 
         # Flag specifying if experiment is running
         self.experiment_running = False
+
+        # Integrate ExperimentThread
+        self.experiment_thread = ExperimentThread()
+        self.experiment_thread.trial_started.connect(self.on_trial_started)
+        self.experiment_thread.trial_completed.connect(self.on_trial_completed)
+        self.experiment_thread.experiment_finished.connect(self.on_experiment_finished)
+        self.experiment_thread.stability_error.connect(self.on_stability_error)
+
 
     def mousePressEvent(self, event):
         """Handle left click onset to begin drawing ellipse if experiment is not running
@@ -196,61 +253,19 @@ class MainWindow(QMainWindow):
                 # Start experiment thread
                 self.experiment_running = True
                 self.start_button.setText("Stop Experiment")
-                experiment_thread = threading.Thread(target=self.run_experiment)
-                experiment_thread.start()
+                self.experiment_thread.num_trials = num_trials
+                self.experiment_thread.start()
             else:
                 print('Please draw roi before beginning experiment...')
             
         else:
-            self.start_button.setText("Start Experiment")
-            self.experiment_running = False
-
-    def run_experiment(self):
-        # Run experiment
-        for i in range(num_trials):
-            self.trial_num = i+1
-            self.run_trial(i)
+            self.stop_experiment()
     
-    def run_trial(self, i):
-        """Run one trial
-
-        Args:
-            i (int): Trial #
-        """
-        try:
-            # Begin trial
-            self.trial_in_progress = True
-            
-            # Ensure mouse eye has been open for at least 200ms before beginning trial
-            self.ensure_stability(i)
-            
-            # Start recording 50 ms before stimulus
-            time.sleep(0.05)
-            
-            # Conditioned Stimulus
-            cs_timestamp = self.cond_stim()  # returns timestamp of conditioned stimulus onset
-            time.sleep(ISI)  # 250ms ISI
-            
-            # Unconditioned stimulus
-            us_timestamp = self.uncond_stim()  # returns timestamp of unconditioned stimulus onset
-            
-            # Wait for air puff to complete
-            time.sleep(0.05)
-                        
-            # Initiate ITI
-            print("Waiting 10 seconds in between trials...")
-            time.sleep(ITI)  # 10s ITI
-            
-            self.stim_data = pd.concat([
-                self.stim_data,
-                pd.DataFrame([[i+1, cs_timestamp, us_timestamp]], columns=self.stim_data.columns)
-            ], ignore_index=True)
-            
-            # End trial
-            self.trial_in_progress = False
-            
-        except KeyboardInterrupt:
-            print("Puff sequence interrupted by user.")
+    def stop_experiment(self):
+        """Stop the experiment gracefully"""
+        self.experiment_running = False
+        self.start_button.setText("Start Experiment")
+        self.experiment_thread.stop()
     
     def ensure_stability(self, i):
         """Check if FEC stays above 0.75 for at least 200 ms
@@ -294,8 +309,25 @@ class MainWindow(QMainWindow):
         response = ser.readline().decode().strip()  # Read confirmation
         timestamp = pd.Timestamp.now()     # Record when response is received, arduino code has completed execution
         return timestamp
+    
+    def on_trial_started(self, trial_num):
+        print(f"Trial {trial_num} started...")
+
+    def on_trial_completed(self, trial_num):
+        print(f"Trial {trial_num} completed.")
+
+    def on_experiment_finished(self):
+        self.experiment_running = False
+        self.start_button.setText("Start Experiment")
+        print("Experiment finished!")
+
+    def on_stability_error(self, error_message):
+        print(f"Stability check failed: {error_message}")
 
     def closeEvent(self, event):
+        if self.experiment_thread.isRunning():
+            self.experiment_thread.stop()
+            self.experiment_thread.wait()
         self.camera_thread.stop()
         self.fec_data.to_csv(f"FEC/mouse_{mouse_id}_fec.csv", index=False)
         self.stim_data.to_csv(f"stim/mouse_{mouse_id}_stim.csv", index=False)
