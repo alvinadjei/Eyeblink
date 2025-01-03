@@ -6,9 +6,9 @@ import sounddevice as sd
 import cv2
 import numpy as np
 import pandas as pd
-from PySide6.QtCore import Qt, QTimer, QThread, pyqtSignal
-from PySide6.QtGui import QImage, QPixmap, QPainter, QPen
-from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QPushButton, QWidget
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen
+from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QPushButton, QWidget
 
 # Initialize global constants
 num_trials = 10  # number of trials to run
@@ -125,10 +125,10 @@ class MainWindow(QMainWindow):
         # Video display
         self.video_label = QLabel()
         self.video_label.setMouseTracking(True)  # Enable mouse tracking
-        self.video_label.mousePressEvent = self.mouse_press_event  # Set mouse press func
-        self.video_label.mouseMoveEvent = self.mouse_move_event  # Set mouse movement func
-        self.video_label.mouseReleaseEvent = self.mouse_release_event  # Set mouse release func
-
+        self.video_label.mousePressEvent = self.mousePressEvent  # Set mouse press func
+        self.video_label.mouseMoveEvent = self.mouseMoveEvent  # Set mouse movement func
+        self.video_label.mouseReleaseEvent = self.mouseReleaseEvent  # Set mouse release func
+        self.video_label.mouseReleaseEvent = self.mouseReleaseEvent  # Set mouse release func
         self.layout.addWidget(self.video_label)
 
         # Start/Stop button
@@ -139,6 +139,9 @@ class MainWindow(QMainWindow):
         # Integrate CameraThread
         self.camera_thread = CameraThread()
         self.camera_thread.frame_ready.connect(self.update_frame)
+
+        # Current frame
+        self.current_frame = None
 
         # Data
         self.fec_data = pd.DataFrame(columns=["Timestamp", "Trial #", "FEC"])
@@ -166,32 +169,47 @@ class MainWindow(QMainWindow):
         self.experiment_thread.stability_error.connect(self.on_stability_error)
 
 
+    def scale_coords(self, event):
+        widget_width, widget_height = self.video_label.width(), self.video_label.height()
+        image_height, image_width = self.current_frame.shape[:2]
+
+        x_scale = image_width / widget_width
+        y_scale = image_height / widget_height
+
+        x = int(event.pos().x() * x_scale)
+        y = int(event.pos().y() * y_scale)
+
+        return x, y
+
     def mousePressEvent(self, event):
         """Handle left click onset to begin drawing ellipse if experiment is not running
         """
         if event.button() == Qt.LeftButton and not self.experiment_running:
             # Scale the mouse coordinates to image coordinates
-            self.ellipse_start = (int(event.position().x()), int(event.position().y()))
+            self.ellipse_start = self.scale_coords(event)
             self.drawing = True  # Begin drawing
     
     def mouseMoveEvent(self, event):
         """Handle mouse movement to draw ellipse if experiment is not running
         """
-        if self.drawing and not self.running:
-            self.ellipse_end = (int(event.position().x()), int(event.position().y()))
+        if self.drawing and not self.experiment_running:
+            self.ellipse_end = self.scale_coords(event)
+
+            # Calculate ellipse parameters
+            self.calculate_ellipse(release=False)
 
     def mouseReleaseEvent(self, event):
         """Handle left click release to stop drawing ellipse if experiment is not running
         """
         if event.button() == Qt.LeftButton and not self.experiment_running:
-            self.ellipse_end = (int(event.position().x()), int(event.position().y()))
+            self.ellipse_end = self.scale_coords(event)
             self.drawing = False  # End drawing
 
             # Calculate ellipse parameters
-            self.calculate_ellipse()
+            self.calculate_ellipse(release=True)
     
     def calculate_ellipse(self):
-        if self.start_point and self.end_point:
+        if self.ellipse_start and self.ellipse_end:
             x1, y1 = self.ellipse_start
             x2, y2 = self.ellipse_end
 
@@ -209,6 +227,7 @@ class MainWindow(QMainWindow):
             self.camera_thread.set_ellipse(self.ellipse_params)
     
     def update_frame(self, frame):
+        self.current_frame = frame
         if self.ellipse_params:
             # Draw the ellipse on the frame
             cv2.ellipse(frame, self.ellipse_params, (0, 255, 0), 2)
@@ -234,14 +253,18 @@ class MainWindow(QMainWindow):
 
     def calculate_fec(self, frame):
         if self.ellipse_params:
-            mask = np.zeros(frame.shape[:2], dtype=np.uint8)
-            cv2.ellipse(mask, self.ellipse_params, 255, -1)
-            roi = cv2.bitwise_and(frame, frame, mask=mask)
-
             # FEC calculation logic
-            gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-            lighter_pixels = np.sum(gray > 128)
-            total_pixels = np.sum(mask > 0)
+            gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
+            filtered_gray = cv2.medianBlur(gray, 5)  # Apply 5 x 5 median filter to eliminate "salt and pepper" noise
+            # Apply a binary threshold to the grayscale image
+            _, binary = cv2.threshold(filtered_gray, binary_threshold, 255, cv2.THRESH_BINARY)  # Any pixel value < binary_threshold is set to 0, and > binary_threshold is 255
+            
+            mask = np.zeros(binary.shape, dtype=np.uint8)
+            cv2.ellipse(mask, self.ellipse_params, 255, -1)
+            roi = cv2.bitwise_and(binary, binary, mask=mask)
+
+            lighter_pixels = cv2.countNonZero(roi)
+            total_pixels = cv2.countNonZero(mask)
             self.fec_value = lighter_pixels / total_pixels if total_pixels > 0 else 0
             return self.fec_value
         return 0
@@ -329,8 +352,12 @@ class MainWindow(QMainWindow):
             self.experiment_thread.stop()
             self.experiment_thread.wait()
         self.camera_thread.stop()
-        self.fec_data.to_csv(f"FEC/mouse_{mouse_id}_fec.csv", index=False)
-        self.stim_data.to_csv(f"stim/mouse_{mouse_id}_stim.csv", index=False)
+        self.camera_thread.stop()
+        if not self.fec_data.empty:
+            self.fec_data.to_csv(f"FEC/mouse_{mouse_id}_fec.csv", index=False)
+        if not self.stim_data.empty:
+            self.stim_data.to_csv(f"stim/mouse_{mouse_id}_stim.csv", index=False)
+        super().closeEvent(event)
         super().closeEvent(event)
 
 if __name__ == "__main__":
