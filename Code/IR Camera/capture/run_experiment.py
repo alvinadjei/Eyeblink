@@ -1,7 +1,6 @@
 import sys
 import time
 import serial
-import threading
 import sounddevice as sd
 import cv2
 import numpy as np
@@ -17,14 +16,14 @@ ITI = 10  # 10 second inter-trial interval
 arduino_port = 'COM4'  # '/dev/cu.usbserial-01C60315'  # Match this to Arduino's port, check by running 'ls /dev/cu.*' in terminal on Mac
 baud_rate = 9600  # arduino baud rate
 frequency = 880.0  # Frequency in Hz (A5) of CS
-tone_duration = 0.3     # Duration in seconds of CS
+tone_duration = 0.25     # Duration in seconds of CS
 sample_rate = 44100  # Sample rate in Hz of CS
-binary_threshold = 150  # Any pixel value in the processed image below 150 will be set to 0, and above 150 will be set to 1
+binary_threshold = 50  # Any pixel value in the processed image below 150 will be set to 0, and above 150 will be set to 1
 stability_threshold = 0.25  # FEC value that eye must stay below for at least 200 ms before starting next trial
 stability_duration = 0.2  # 200 ms in seconds of stability check
 
-# Open the file containing the camera's calibration vals
-fs = cv2.FileStorage('Code/IR Camera/calibration/calib_params.xml', cv2.FILE_STORAGE_READ)
+# # Open the file containing the camera's calibration vals
+# fs = cv2.FileStorage('Code/IR Camera/calibration/calib_params.xml', cv2.FILE_STORAGE_READ)
 
 # # Read camera calibration vals and save as vars
 # mtx = fs.getNode("mtx").mat()
@@ -63,6 +62,64 @@ class CameraThread(QThread):
         self.running = False
         self.wait()
 
+class ExperimentThread(QThread):
+    trial_started = pyqtSignal(int)  # Signal emitted when a trial starts
+    trial_completed = pyqtSignal(int)  # Signal emitted when a trial completes
+    experiment_finished = pyqtSignal()  # Signal emitted when the experiment ends
+    stability_error = pyqtSignal(str)  # Signal for stability check failure
+    stim_collector = pyqtSignal(pd.DataFrame)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.num_trials = num_trials
+        self.trial_num = 0
+        self.running = False
+        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "US Timestamp"])
+
+    def run(self):
+        """Main experiment loop"""
+        self.running = True
+        try:
+            for i in range(self.num_trials):
+                if not self.running:
+                    break
+                self.trial_num = i + 1
+                self.trial_started.emit(self.trial_num)
+
+                # Run a single trial
+                self.run_trial(i)
+
+                self.trial_completed.emit(self.trial_num)
+
+        except Exception as e:
+            self.stability_error.emit(str(e))
+
+        finally:
+            self.running = False
+            self.stim_collector.emit(self.stim_data)
+            time.sleep(0.5) # Leave time for stim_data to be saved
+            self.experiment_finished.emit()
+
+    def run_trial(self, i):
+        """Run one trial"""
+        # Ensure stability, trigger CS and US, handle timing
+        window.ensure_stability(i)  # Make sure to use `MainWindow` methods safely
+        time.sleep(0.05)  # Simulate pre-CS timing
+        cs_timestamp = window.cond_stim()  # ISI baked into conditioned stimulus func
+        us_timestamp = window.uncond_stim()
+        time.sleep(ITI)  # Inter-trial interval
+
+        # Save stimulus timestamps to dataframe
+        self.stim_data = pd.concat([
+            self.stim_data,
+            pd.DataFrame([[i+1, cs_timestamp, us_timestamp]], columns=self.stim_data.columns)
+        ], ignore_index=True)
+
+    def stop(self):
+        """Gracefully stop the thread"""
+        self.running = False
+        print("Completing current trial, then stopping...")
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -79,21 +136,21 @@ class MainWindow(QMainWindow):
         self.video_label.mousePressEvent = self.mousePressEvent  # Set mouse press func
         self.video_label.mouseMoveEvent = self.mouseMoveEvent  # Set mouse movement func
         self.video_label.mouseReleaseEvent = self.mouseReleaseEvent  # Set mouse release func
+        self.video_label.mouseReleaseEvent = self.mouseReleaseEvent  # Set mouse release func
         self.layout.addWidget(self.video_label)
-        
 
         # Start/Stop button
         self.start_button = QPushButton("Start Experiment")
         self.start_button.clicked.connect(self.start_experiment)
         self.layout.addWidget(self.start_button)
 
-        # Camera thread
+        # Integrate CameraThread
         self.camera_thread = CameraThread()
         self.camera_thread.frame_ready.connect(self.update_frame)
 
         # Current frame
         self.current_frame = None
-        
+
         # Data
         self.fec_data = pd.DataFrame(columns=["Timestamp", "Trial #", "FEC"])
         self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "US Timestamp"])
@@ -111,7 +168,15 @@ class MainWindow(QMainWindow):
 
         # Flag specifying if experiment is running
         self.experiment_running = False
-    
+
+        # Integrate ExperimentThread
+        self.experiment_thread = ExperimentThread()
+        self.experiment_thread.trial_started.connect(self.on_trial_started)
+        self.experiment_thread.trial_completed.connect(self.on_trial_completed)
+        self.experiment_thread.experiment_finished.connect(self.on_experiment_finished)
+        self.experiment_thread.stability_error.connect(self.on_stability_error)
+        self.experiment_thread.stim_collector.connect(self.save_stim_data)
+
     def scale_coords(self, event):
         widget_width, widget_height = self.video_label.width(), self.video_label.height()
         image_height, image_width = self.current_frame.shape[:2]
@@ -159,35 +224,32 @@ class MainWindow(QMainWindow):
             # Center of the ellipse
             center = ((x1 + x2) // 2, (y1 + y2) // 2)
             # Axes lengths
-            axes = (abs(x2 - x1) // 2, abs(y2 - y1) // 2)
+            axes = (abs(x2 - x1), abs(y2 - y1))
             # Angle (assume 0 for simplicity)
             angle = 0
 
             self.ellipse_params = (center, axes, angle)
+
             if release:
                 print(f"Ellipse drawn with center={center}, axes={axes}, angle={angle}")
-
-            # Update the camera thread
-            # self.camera_thread.set_ellipse(self.ellipse_params)
     
     def update_frame(self, frame):
-        self.current_frame = frame       
+        self.current_frame = frame
         if self.ellipse_params:
             # Draw the ellipse on the frame
             cv2.ellipse(frame, self.ellipse_params, (0, 255, 0), 2)
-
-        if self.experiment_running and self.trial_in_progress:
             # Perform FEC calculation here
             fec_value = self.calculate_fec(frame)
+            # Display FEC value in the top left corner
+            cv2.putText(frame, f"FEC: {fec_value:.2f}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (200, 0, 200), 3)
+
+        if self.experiment_running and self.trial_in_progress:
             timestamp = pd.Timestamp.now()
             self.fec_data = pd.concat([
                 self.fec_data,
                 pd.DataFrame([[timestamp, self.trial_num, fec_value]], columns=self.fec_data.columns)
             ], ignore_index=True)
-
-            # Display FEC value in the top left corner
-            cv2.putText(frame, f"FEC: {fec_value:.2f}", (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (200, 0, 200), 3)
             
         # Convert the frame to QImage for display
         rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -198,7 +260,7 @@ class MainWindow(QMainWindow):
     def calculate_fec(self, frame):
         if self.ellipse_params:
             # FEC calculation logic
-            gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
             filtered_gray = cv2.medianBlur(gray, 5)  # Apply 5 x 5 median filter to eliminate "salt and pepper" noise
             # Apply a binary threshold to the grayscale image
             _, binary = cv2.threshold(filtered_gray, binary_threshold, 255, cv2.THRESH_BINARY)  # Any pixel value < binary_threshold is set to 0, and > binary_threshold is 255
@@ -220,61 +282,19 @@ class MainWindow(QMainWindow):
                 # Start experiment thread
                 self.experiment_running = True
                 self.start_button.setText("Stop Experiment")
-                experiment_thread = threading.Thread(target=self.run_experiment)
-                experiment_thread.start()
+                self.experiment_thread.num_trials = num_trials
+                self.experiment_thread.start()
             else:
                 print('Please draw roi before beginning experiment...')
             
         else:
-            self.start_button.setText("Start Experiment")
-            self.experiment_running = False
-
-    def run_experiment(self):
-        # Run experiment
-        for i in range(num_trials):
-            self.trial_num = i+1
-            self.run_trial(i)
+            self.stop_experiment()
     
-    def run_trial(self, i):
-        """Run one trial
-
-        Args:
-            i (int): Trial #
-        """
-        try:
-            # Begin trial
-            self.trial_in_progress = True
-            
-            # Ensure mouse eye has been open for at least 200ms before beginning trial
-            self.ensure_stability(i)
-            
-            # Start recording 50 ms before stimulus
-            time.sleep(0.05)
-            
-            # Conditioned Stimulus
-            cs_timestamp = self.cond_stim()  # returns timestamp of conditioned stimulus onset
-            time.sleep(ISI)  # 250ms ISI
-            
-            # Unconditioned stimulus
-            us_timestamp = self.uncond_stim()  # returns timestamp of unconditioned stimulus onset
-            
-            # Wait for air puff to complete
-            time.sleep(0.05)
-                        
-            # Initiate ITI
-            print("Waiting 10 seconds in between trials...")
-            time.sleep(ITI)  # 10s ITI
-            
-            self.stim_data = pd.concat([
-                self.stim_data,
-                pd.DataFrame([[i+1, cs_timestamp, us_timestamp]], columns=self.stim_data.columns)
-            ], ignore_index=True)
-            
-            # End trial
-            self.trial_in_progress = False
-            
-        except KeyboardInterrupt:
-            print("Puff sequence interrupted by user.")
+    def stop_experiment(self):
+        """Stop the experiment gracefully"""
+        self.experiment_running = False
+        self.start_button.setText("Start Experiment")
+        self.experiment_thread.stop()
     
     def ensure_stability(self, i):
         """Check if FEC stays above 0.75 for at least 200 ms
@@ -306,7 +326,7 @@ class MainWindow(QMainWindow):
 
         # Play the sound
         sd.play(waveform, samplerate=sample_rate)
-        # sd.wait()  # Wait until the sound has finished playing
+        sd.wait()  # Wait until the sound has finished playing
         
         # Return timestamp of stimulus onset
         return timestamp
@@ -317,14 +337,43 @@ class MainWindow(QMainWindow):
         ser.write(b'p')  # send 'p' command to Arduino to trigger the puff
         response = ser.readline().decode().strip()  # Read confirmation
         timestamp = pd.Timestamp.now()     # Record when response is received, arduino code has completed execution
+        time.sleep(0.05)  # Wait for air puff to complete
         return timestamp
+    
+    def on_trial_started(self, trial_num):
+        self.trial_in_progress = True
+        print(f"Trial {trial_num} started...")
+
+    def on_trial_completed(self, trial_num):
+        self.trial_in_progress = False
+        print(f"Trial {trial_num} completed.")
+
+    def on_experiment_finished(self):
+        self.experiment_running = False
+        self.start_button.setText("Start Experiment")
+        
+        print("Experiment finished!")
+
+    def on_stability_error(self, error_message):
+        print(f"Stability check failed: {error_message}")        
+
+    def save_stim_data(self, stim_data):
+        self.stim_data = stim_data
 
     def closeEvent(self, event):
+        if self.experiment_thread.isRunning():
+            self.experiment_thread.stop()
+            self.experiment_thread.wait()
         self.camera_thread.stop()
+        self.camera_thread.stop()
+
+        # Save data to csv's
         if not self.fec_data.empty:
-            self.fec_data.to_csv(f"FEC/mouse_{mouse_id}_fec.csv", index=False)
+            self.fec_data.to_csv(f"Code/IR Camera/capture/FEC/mouse_{mouse_id}_fec.csv", index=False)
         if not self.stim_data.empty:
-            self.stim_data.to_csv(f"stim/mouse_{mouse_id}_stim.csv", index=False)
+            self.stim_data.to_csv(f"Code/IR Camera/capture/stim/mouse_{mouse_id}_stim.csv", index=False)
+        
+        super().closeEvent(event)
         super().closeEvent(event)
 
 if __name__ == "__main__":
