@@ -176,6 +176,52 @@ class MainWindow(QMainWindow):
         self.experiment_thread.experiment_finished.connect(self.on_experiment_finished)
         self.experiment_thread.stability_error.connect(self.on_stability_error)
         self.experiment_thread.stim_collector.connect(self.save_stim_data)
+    
+    def keyPressEvent(self, event):
+        """Handle key press events to control lighting."""
+        if event.key() == Qt.Key_H:  # Check if the 'H' is pressed
+            try:
+                ser.write(b'h')  # Send 'h' to the Arduino, toggle houselights on/off
+                response = ser.readline().decode().strip()  # Read confirmation
+                print(f"Houselight turned {response}")
+            except Exception as e:
+                print(f"Error sending 'h' to Arduino: {e}")
+        
+        elif event.key() == Qt.Key_A:  # Check if the 'J' key is pressed
+            try:
+                ser.write(b'a')  # Send 'a' to the Arduino, turn horizontal IR led brightness down
+                response = ser.readline().decode().strip()  # Read confirmation
+                print(f"Horizontal IR LED brightness: {int(int(response) / 255 * 100)}%")
+            except Exception as e:
+                print(f"Error sending 'a' to Arduino: {e}")
+        
+        elif event.key() == Qt.Key_D:  # Check if the spacebar is pressed
+            try:
+                ser.write(b'd')  # Send 'd' to the Arduino, turn horizontal IR led brightness up
+                response = ser.readline().decode().strip()  # Read confirmation
+                print(f"Horizontal IR LED brightness: {int(int(response) / 255 * 100)}%")
+            except Exception as e:
+                print(f"Error sending 'd' to Arduino: {e}")
+
+        elif event.key() == Qt.Key_S:  # Check if the 'S' key is pressed
+            try:
+                ser.write(b's')  # Send 's' to the Arduino, turn vertical IR led brightness down
+                response = ser.readline().decode().strip()  # Read confirmation
+                print(f"Vertical IR LED brightness: {int(int(response) / 255 * 100)}%")
+            except Exception as e:
+                print(f"Error sending 's' to Arduino: {e}")
+        
+        elif event.key() == Qt.Key_W:  # Check if the 'W' key is pressed
+            try:
+                ser.write(b'w')  # Send 'w' to the Arduino, turn vertical IR led brightness down
+                response = ser.readline().decode().strip()  # Read confirmation
+                print(f"Vertical IR LED brightness: {int(int(response) / 255 * 100)}%")
+            except Exception as e:
+                print(f"Error sending 'w' to Arduino: {e}")
+
+        else:
+            # Call the base class implementation (optional)
+            super().keyPressEvent(event)
 
     def scale_coords(self, event):
         widget_width, widget_height = self.video_label.width(), self.video_label.height()
@@ -369,9 +415,9 @@ class MainWindow(QMainWindow):
 
         # Save data to csv's
         if not self.fec_data.empty:
-            self.fec_data.to_csv(f"Code/IR Camera/capture/FEC/mouse_{mouse_id}_fec.csv", index=False)
+            self.fec_data.to_csv(f"Code/capture/FEC/mouse_{mouse_id}_fec.csv", index=False)
         if not self.stim_data.empty:
-            self.stim_data.to_csv(f"Code/IR Camera/capture/stim/mouse_{mouse_id}_stim.csv", index=False)
+            self.stim_data.to_csv(f"Code/capture/stim/mouse_{mouse_id}_stim.csv", index=False)
         
         super().closeEvent(event)
         super().closeEvent(event)

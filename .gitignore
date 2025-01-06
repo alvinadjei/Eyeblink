@@ -1,0 +1,3 @@
+.venv-wind/
+*.pyc
+__pycache__/
