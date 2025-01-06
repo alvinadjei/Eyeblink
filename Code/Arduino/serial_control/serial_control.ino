@@ -2,8 +2,8 @@
 
 #define PIX_PIN 6 // Neopixel control pin
 #define PIX_COUNT 8 // Number of NeoPixels
-#define IR_LED_1 9 // Horizontal IR LED Control Pin
-#define IR_LED_2 10 // Vertical IR LED Control Pin
+#define IR_LED_1 9 // Side IR LED Control Pin
+#define IR_LED_2 10 // Top IR LED Control Pin
 #define PUFF_PIN 11 // Airpuff control pin
 
 // Initialize Neopixel strip
@@ -13,8 +13,8 @@ Adafruit_NeoPixel strip(PIX_COUNT, PIX_PIN);
 uint32_t white = strip.Color(180, 180, 180);
 
 // Define starting LED brightnesses
-int brightness_1 = 100; // horizontal
-int brightness_2 = 100; // vertical
+int brightness_1 = 100; // Side IR LED
+int brightness_2 = 100; // Top IR LED
 
 // Keep track of whether neopixels are on or off
 bool pixOn = false;
@@ -34,8 +34,8 @@ void setup() {
 void loop() {
 
   // Write brightness values to IR LED control pins
-  analogWrite(IR_LED_1, brightness_1); // horizontal
-  analogWrite(IR_LED_2, brightness_2); // vertical
+  analogWrite(IR_LED_1, brightness_1); // side
+  analogWrite(IR_LED_2, brightness_2); // top
 
   if (Serial.available() > 0) {
     char command = Serial.read();
@@ -56,25 +56,25 @@ void loop() {
       }
     }
 
-    // Command to turn down horizontal IR brightness
+    // Command to turn down side IR brightness
     if (command == 'a' && brightness_1 > 0) { 
       brightness_1 -= 5;
       Serial.println(brightness_1);
     }
 
-    // Command to turn up horizontal IR brightness
+    // Command to turn up side IR brightness
     if (command == 'd' && brightness_1 < 255) { 
       brightness_1 += 5;
       Serial.println(brightness_1);
     }
 
-    // Command to turn down vertical IR brightness
+    // Command to turn down top IR brightness
     if (command == 's' && brightness_1 > 0) { 
       brightness_2 -= 5;
       Serial.println(brightness_2);
     }
 
-    // Command to turn up vertical IR brightness
+    // Command to turn up top IR brightness
     if (command == 'w' && brightness_1 < 255) { 
       brightness_2 += 5;
       Serial.println(brightness_2);

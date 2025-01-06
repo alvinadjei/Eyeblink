@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen
-from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QPushButton, QWidget
+from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QHBoxLayout, QPushButton, QWidget
 
 # Initialize global constants
 num_trials = 10  # number of trials to run
@@ -130,6 +130,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
 
+         # Horizontal layout for video feed and explanations
+        video_and_text_layout = QHBoxLayout()
+
         # Video display
         self.video_label = QLabel()
         self.video_label.setMouseTracking(True)  # Enable mouse tracking
@@ -137,7 +140,31 @@ class MainWindow(QMainWindow):
         self.video_label.mouseMoveEvent = self.mouseMoveEvent  # Set mouse movement func
         self.video_label.mouseReleaseEvent = self.mouseReleaseEvent  # Set mouse release func
         self.video_label.mouseReleaseEvent = self.mouseReleaseEvent  # Set mouse release func
-        self.layout.addWidget(self.video_label)
+        video_and_text_layout.addWidget(self.video_label)
+
+        # Explanation text
+        self.explanation_label = QLabel("""
+            This experiment involves combining a conditioned stimulus (a short tone)
+            and an unconditioned stimulus (puff of air in the eye) to a mouse. The buttons below control 
+            various aspects of the experiment:
+
+            - Start Experiment Button: Starts the experiment with predefined settings.
+            - Stop Experiment Button: The experiment will finish current trial, then stop.
+
+            Key controls:
+            - H: Toggle house lights on/off
+            - A: Decrease side IR LED's brightness
+            - D: Increase side IR LED's brightness
+            - S: Decrease top IR LED's brightness
+            - W: Increase top IR LED's brightness
+            """
+        )
+        self.explanation_label.setWordWrap(True)  # Wrap the text to fit the width
+        self.explanation_label.setFixedWidth(300)  # Set a fixed width to control text box size
+        video_and_text_layout.addWidget(self.explanation_label)
+
+        # Add the horizontal layout to the main layout
+        self.layout.addLayout(video_and_text_layout)
 
         # Start/Stop button
         self.start_button = QPushButton("Start Experiment")
@@ -179,7 +206,7 @@ class MainWindow(QMainWindow):
     
     def keyPressEvent(self, event):
         """Handle key press events to control lighting."""
-        if event.key() == Qt.Key_H:  # Check if the 'H' is pressed
+        if event.key() == Qt.Key_H:  # Check if the 'H' key is pressed
             try:
                 ser.write(b'h')  # Send 'h' to the Arduino, toggle houselights on/off
                 response = ser.readline().decode().strip()  # Read confirmation
@@ -187,40 +214,40 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 print(f"Error sending 'h' to Arduino: {e}")
         
-        elif event.key() == Qt.Key_A:  # Check if the 'J' key is pressed
+        elif event.key() == Qt.Key_A:  # Check if the 'A' key is pressed
             try:
-                ser.write(b'a')  # Send 'a' to the Arduino, turn horizontal IR led brightness down
+                ser.write(b'a')  # Send 'a' to the Arduino, turn side IR led brightness down
                 response = ser.readline().decode().strip()  # Read confirmation
-                print(f"Horizontal IR LED brightness: {int(int(response) / 255 * 100)}%")
+                print(f"Side IR LED brightness: {int(int(response) / 255 * 100)}%")
             except Exception as e:
                 print(f"Error sending 'a' to Arduino: {e}")
         
-        elif event.key() == Qt.Key_D:  # Check if the spacebar is pressed
+        elif event.key() == Qt.Key_D:  # Check if the the 'D' key is pressed
             try:
-                ser.write(b'd')  # Send 'd' to the Arduino, turn horizontal IR led brightness up
+                ser.write(b'd')  # Send 'd' to the Arduino, turn side IR led brightness up
                 response = ser.readline().decode().strip()  # Read confirmation
-                print(f"Horizontal IR LED brightness: {int(int(response) / 255 * 100)}%")
+                print(f"Side IR LED brightness: {int(int(response) / 255 * 100)}%")
             except Exception as e:
                 print(f"Error sending 'd' to Arduino: {e}")
 
         elif event.key() == Qt.Key_S:  # Check if the 'S' key is pressed
             try:
-                ser.write(b's')  # Send 's' to the Arduino, turn vertical IR led brightness down
+                ser.write(b's')  # Send 's' to the Arduino, turn top IR led brightness down
                 response = ser.readline().decode().strip()  # Read confirmation
-                print(f"Vertical IR LED brightness: {int(int(response) / 255 * 100)}%")
+                print(f"Top IR LED brightness: {int(int(response) / 255 * 100)}%")
             except Exception as e:
                 print(f"Error sending 's' to Arduino: {e}")
         
         elif event.key() == Qt.Key_W:  # Check if the 'W' key is pressed
             try:
-                ser.write(b'w')  # Send 'w' to the Arduino, turn vertical IR led brightness down
+                ser.write(b'w')  # Send 'w' to the Arduino, turn top IR led brightness up
                 response = ser.readline().decode().strip()  # Read confirmation
-                print(f"Vertical IR LED brightness: {int(int(response) / 255 * 100)}%")
+                print(f"Top IR LED brightness: {int(int(response) / 255 * 100)}%")
             except Exception as e:
                 print(f"Error sending 'w' to Arduino: {e}")
 
         else:
-            # Call the base class implementation (optional)
+            # Call the base class implementation
             super().keyPressEvent(event)
 
     def scale_coords(self, event):
@@ -387,6 +414,7 @@ class MainWindow(QMainWindow):
         return timestamp
     
     def on_trial_started(self, trial_num):
+        self.trial_num = trial_num
         self.trial_in_progress = True
         print(f"Trial {trial_num} started...")
 
