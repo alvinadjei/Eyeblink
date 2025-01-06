@@ -153,7 +153,7 @@ class MainWindow(QMainWindow):
             - Stop Experiment Button: The experiment will finish 
               current trial, then stop.
 
-            Key controls:
+            Key controls (set BEFORE starting experiment):
             - H: Toggle house lights on/off
             - A: Decrease side IR LED's brightness
             - D: Increase side IR LED's brightness

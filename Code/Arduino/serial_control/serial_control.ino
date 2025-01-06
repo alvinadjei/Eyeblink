@@ -13,8 +13,8 @@ Adafruit_NeoPixel strip(PIX_COUNT, PIX_PIN);
 uint32_t white = strip.Color(180, 180, 180);
 
 // Define starting LED brightnesses
-int brightness_1 = 100; // Side IR LED
-int brightness_2 = 100; // Top IR LED
+int brightness_1 = 130; // Side IR LED
+int brightness_2 = 130; // Top IR LED
 
 // Keep track of whether neopixels are on or off
 bool pixOn = false;
