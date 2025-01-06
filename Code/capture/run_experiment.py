@@ -84,7 +84,6 @@ class ExperimentThread(QThread):
                 if not self.running:
                     break
                 self.trial_num = i + 1
-                self.trial_started.emit(self.trial_num)
 
                 # Run a single trial
                 self.run_trial(i)
@@ -104,16 +103,19 @@ class ExperimentThread(QThread):
         """Run one trial"""
         # Ensure stability, trigger CS and US, handle timing
         window.ensure_stability(i)  # Make sure to use `MainWindow` methods safely
+        self.trial_started.emit(self.trial_num)  # Signal to `MainWindow` that the trial has started
         time.sleep(0.05)  # Simulate pre-CS timing
         cs_timestamp = window.cond_stim()  # ISI baked into conditioned stimulus func
         us_timestamp = window.uncond_stim()
-        time.sleep(ITI)  # Inter-trial interval
+        if self.running:
+            time.sleep(ITI)  # Inter-trial interval
 
-        # Save stimulus timestamps to dataframe
-        self.stim_data = pd.concat([
-            self.stim_data,
-            pd.DataFrame([[i+1, cs_timestamp, us_timestamp]], columns=self.stim_data.columns)
-        ], ignore_index=True)
+        if cs_timestamp and us_timestamp:
+            # Save stimulus timestamps to dataframe
+            self.stim_data = pd.concat([
+                self.stim_data,
+                pd.DataFrame([[i+1, cs_timestamp, us_timestamp]], columns=self.stim_data.columns)
+            ], ignore_index=True)
 
     def stop(self):
         """Gracefully stop the thread"""
@@ -144,12 +146,12 @@ class MainWindow(QMainWindow):
 
         # Explanation text
         self.explanation_label = QLabel("""
-            This experiment involves combining a conditioned stimulus (a short tone)
-            and an unconditioned stimulus (puff of air in the eye) to a mouse. The buttons below control 
-            various aspects of the experiment:
+            This experiment involves combining a conditioned stimulus (a short tone) and an unconditioned stimulus (puff of air in the eye) to a mouse. The buttons below control various aspects of the experiment:
 
-            - Start Experiment Button: Starts the experiment with predefined settings.
-            - Stop Experiment Button: The experiment will finish current trial, then stop.
+            - Start Experiment Button: Starts the experiment with 
+              predefined settings.
+            - Stop Experiment Button: The experiment will finish 
+              current trial, then stop.
 
             Key controls:
             - H: Toggle house lights on/off
@@ -205,46 +207,47 @@ class MainWindow(QMainWindow):
         self.experiment_thread.stim_collector.connect(self.save_stim_data)
     
     def keyPressEvent(self, event):
-        """Handle key press events to control lighting."""
-        if event.key() == Qt.Key_H:  # Check if the 'H' key is pressed
-            try:
-                ser.write(b'h')  # Send 'h' to the Arduino, toggle houselights on/off
-                response = ser.readline().decode().strip()  # Read confirmation
-                print(f"Houselight turned {response}")
-            except Exception as e:
-                print(f"Error sending 'h' to Arduino: {e}")
-        
-        elif event.key() == Qt.Key_A:  # Check if the 'A' key is pressed
-            try:
-                ser.write(b'a')  # Send 'a' to the Arduino, turn side IR led brightness down
-                response = ser.readline().decode().strip()  # Read confirmation
-                print(f"Side IR LED brightness: {int(int(response) / 255 * 100)}%")
-            except Exception as e:
-                print(f"Error sending 'a' to Arduino: {e}")
-        
-        elif event.key() == Qt.Key_D:  # Check if the the 'D' key is pressed
-            try:
-                ser.write(b'd')  # Send 'd' to the Arduino, turn side IR led brightness up
-                response = ser.readline().decode().strip()  # Read confirmation
-                print(f"Side IR LED brightness: {int(int(response) / 255 * 100)}%")
-            except Exception as e:
-                print(f"Error sending 'd' to Arduino: {e}")
+        if not self.experiment_running:
+            """Handle key press events to control lighting."""
+            if event.key() == Qt.Key_H:  # Check if the 'H' key is pressed
+                try:
+                    ser.write(b'h')  # Send 'h' to the Arduino, toggle houselights on/off
+                    response = ser.readline().decode().strip()  # Read confirmation
+                    print(f"Houselight turned {response}")
+                except Exception as e:
+                    print(f"Error sending 'h' to Arduino: {e}")
+            
+            elif event.key() == Qt.Key_A:  # Check if the 'A' key is pressed
+                try:
+                    ser.write(b'a')  # Send 'a' to the Arduino, turn side IR led brightness down
+                    response = ser.readline().decode().strip()  # Read confirmation
+                    print(f"Side IR LED brightness: {int(int(response) / 255 * 100)}%")
+                except Exception as e:
+                    print(f"Error sending 'a' to Arduino: {e}")
+            
+            elif event.key() == Qt.Key_D:  # Check if the the 'D' key is pressed
+                try:
+                    ser.write(b'd')  # Send 'd' to the Arduino, turn side IR led brightness up
+                    response = ser.readline().decode().strip()  # Read confirmation
+                    print(f"Side IR LED brightness: {int(int(response) / 255 * 100)}%")
+                except Exception as e:
+                    print(f"Error sending 'd' to Arduino: {e}")
 
-        elif event.key() == Qt.Key_S:  # Check if the 'S' key is pressed
-            try:
-                ser.write(b's')  # Send 's' to the Arduino, turn top IR led brightness down
-                response = ser.readline().decode().strip()  # Read confirmation
-                print(f"Top IR LED brightness: {int(int(response) / 255 * 100)}%")
-            except Exception as e:
-                print(f"Error sending 's' to Arduino: {e}")
-        
-        elif event.key() == Qt.Key_W:  # Check if the 'W' key is pressed
-            try:
-                ser.write(b'w')  # Send 'w' to the Arduino, turn top IR led brightness up
-                response = ser.readline().decode().strip()  # Read confirmation
-                print(f"Top IR LED brightness: {int(int(response) / 255 * 100)}%")
-            except Exception as e:
-                print(f"Error sending 'w' to Arduino: {e}")
+            elif event.key() == Qt.Key_S:  # Check if the 'S' key is pressed
+                try:
+                    ser.write(b's')  # Send 's' to the Arduino, turn top IR led brightness down
+                    response = ser.readline().decode().strip()  # Read confirmation
+                    print(f"Top IR LED brightness: {int(int(response) / 255 * 100)}%")
+                except Exception as e:
+                    print(f"Error sending 's' to Arduino: {e}")
+            
+            elif event.key() == Qt.Key_W:  # Check if the 'W' key is pressed
+                try:
+                    ser.write(b'w')  # Send 'w' to the Arduino, turn top IR led brightness up
+                    response = ser.readline().decode().strip()  # Read confirmation
+                    print(f"Top IR LED brightness: {int(int(response) / 255 * 100)}%")
+                except Exception as e:
+                    print(f"Error sending 'w' to Arduino: {e}")
 
         else:
             # Call the base class implementation
@@ -374,12 +377,14 @@ class MainWindow(QMainWindow):
         """
         start_time = None
 
-        while self.trial_in_progress:
+        print("Checking condition: FEC stays below 0.25 for at least 200 ms")
+
+        while self.experiment_running:
             if self.fec_value < stability_threshold:  # If eye is >= 75% open (or < 25% closed)
                 if start_time is None:
                     start_time = time.time()
                 elif time.time() - start_time >= stability_duration:  # Break loop if eyes stays open longer than 200 ms
-                    print(f"Condition met: FEC stayed above 0.75 for at least 200 ms, commencing Trial {i+1}.")
+                    print(f"Condition met: commencing Trial {i+1}.")
                     break
             else:
                 start_time = None  # Reset if the mouse blinks
@@ -390,33 +395,35 @@ class MainWindow(QMainWindow):
     def cond_stim(self):
         """Executes conditioned stimulus (plays the musical tone A5 for 300ms)
         """
-        # Generate the sound wave
-        t = np.linspace(0, tone_duration, int(sample_rate * tone_duration), endpoint=False)
-        waveform = 0.5 * np.sin(2 * np.pi * frequency * t)  # 0.5 for volume control
+        if self.experiment_running:
+            # Generate the sound wave
+            t = np.linspace(0, tone_duration, int(sample_rate * tone_duration), endpoint=False)
+            waveform = 0.5 * np.sin(2 * np.pi * frequency * t)  # 0.5 for volume control
 
-        # Record the CS timestamp using cv2.getTickCount()
-        timestamp = pd.Timestamp.now()
+            # Record the CS timestamp using cv2.getTickCount()
+            timestamp = pd.Timestamp.now()
 
-        # Play the sound
-        sd.play(waveform, samplerate=sample_rate)
-        sd.wait()  # Wait until the sound has finished playing
-        
-        # Return timestamp of stimulus onset
-        return timestamp
+            # Play the sound
+            sd.play(waveform, samplerate=sample_rate)
+            sd.wait()  # Wait until the sound has finished playing
+            
+            # Return timestamp of stimulus onset
+            return timestamp
 
     def uncond_stim(self):
         """Executes unconditioned stimulus (triggers airpuff)
         """
-        ser.write(b'p')  # send 'p' command to Arduino to trigger the puff
-        response = ser.readline().decode().strip()  # Read confirmation
-        timestamp = pd.Timestamp.now()     # Record when response is received, arduino code has completed execution
-        time.sleep(0.05)  # Wait for air puff to complete
-        return timestamp
+        if self.experiment_running:
+            ser.write(b'p')  # send 'p' command to Arduino to trigger the puff
+            response = ser.readline().decode().strip()  # Read confirmation
+            timestamp = pd.Timestamp.now()     # Record when response is received, arduino code has completed execution
+            time.sleep(0.05)  # Wait for air puff to complete
+            return timestamp
     
     def on_trial_started(self, trial_num):
         self.trial_num = trial_num
         self.trial_in_progress = True
-        print(f"Trial {trial_num} started...")
+        # print(f"Trial {trial_num} started...")
 
     def on_trial_completed(self, trial_num):
         self.trial_in_progress = False
