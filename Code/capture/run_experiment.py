@@ -207,12 +207,13 @@ class MainWindow(QMainWindow):
         self.experiment_thread.stim_collector.connect(self.save_stim_data)
     
     def keyPressEvent(self, event):
+        # Lighting cannot be changed once experiment begins
         if not self.experiment_running:
             """Handle key press events to control lighting."""
             if event.key() == Qt.Key_H:  # Check if the 'H' key is pressed
                 try:
                     ser.write(b'h')  # Send 'h' to the Arduino, toggle houselights on/off
-                    response = ser.readline().decode().strip()  # Read confirmation
+                    response = int(ser.readline().decode().strip())  # Read confirmation
                     print(f"Houselight turned {response}")
                 except Exception as e:
                     print(f"Error sending 'h' to Arduino: {e}")
@@ -220,32 +221,36 @@ class MainWindow(QMainWindow):
             elif event.key() == Qt.Key_A:  # Check if the 'A' key is pressed
                 try:
                     ser.write(b'a')  # Send 'a' to the Arduino, turn side IR led brightness down
-                    response = ser.readline().decode().strip()  # Read confirmation
-                    print(f"Side IR LED brightness: {int(int(response) / 255 * 100)}%")
+                    response = int(ser.readline().decode().strip())  # Read confirmation
+                    if response != -1:
+                        print(f"Side IR LED brightness: {int(response / 255 * 100)}%")
                 except Exception as e:
                     print(f"Error sending 'a' to Arduino: {e}")
             
             elif event.key() == Qt.Key_D:  # Check if the the 'D' key is pressed
                 try:
                     ser.write(b'd')  # Send 'd' to the Arduino, turn side IR led brightness up
-                    response = ser.readline().decode().strip()  # Read confirmation
-                    print(f"Side IR LED brightness: {int(int(response) / 255 * 100)}%")
+                    response = int(ser.readline().decode().strip())  # Read confirmation
+                    if response != -1:
+                        print(f"Side IR LED brightness: {int(response / 255 * 100)}%")
                 except Exception as e:
                     print(f"Error sending 'd' to Arduino: {e}")
 
             elif event.key() == Qt.Key_S:  # Check if the 'S' key is pressed
                 try:
                     ser.write(b's')  # Send 's' to the Arduino, turn top IR led brightness down
-                    response = ser.readline().decode().strip()  # Read confirmation
-                    print(f"Top IR LED brightness: {int(int(response) / 255 * 100)}%")
+                    response = int(ser.readline().decode().strip())  # Read confirmation
+                    if response != -1:
+                        print(f"Top IR LED brightness: {int(response / 255 * 100)}%")
                 except Exception as e:
                     print(f"Error sending 's' to Arduino: {e}")
             
             elif event.key() == Qt.Key_W:  # Check if the 'W' key is pressed
                 try:
                     ser.write(b'w')  # Send 'w' to the Arduino, turn top IR led brightness up
-                    response = ser.readline().decode().strip()  # Read confirmation
-                    print(f"Top IR LED brightness: {int(int(response) / 255 * 100)}%")
+                    response = int(ser.readline().decode().strip())  # Read confirmation
+                    if response != -1:
+                        print(f"Top IR LED brightness: {int(response / 255 * 100)}%")
                 except Exception as e:
                     print(f"Error sending 'w' to Arduino: {e}")
 

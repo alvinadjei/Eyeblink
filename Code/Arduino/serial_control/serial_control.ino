@@ -57,27 +57,43 @@ void loop() {
     }
 
     // Command to turn down side IR brightness
-    if (command == 'a' && brightness_1 > 0) { 
-      brightness_1 -= 5;
-      Serial.println(brightness_1);
+    if (command == 'a') { 
+      if (brightness_1 > 0) {
+        brightness_1 -= 5;
+        Serial.println(brightness_1);
+      } else {
+        Serial.println(-1);
+      }
     }
 
     // Command to turn up side IR brightness
-    if (command == 'd' && brightness_1 < 255) { 
-      brightness_1 += 5;
-      Serial.println(brightness_1);
+    if (command == 'd') { 
+      if (brightness_1 < 255) {
+        brightness_1 += 5;
+        Serial.println(brightness_1);
+      } else {
+        Serial.println(-1);
+      }
     }
 
     // Command to turn down top IR brightness
-    if (command == 's' && brightness_1 > 0) { 
-      brightness_2 -= 5;
-      Serial.println(brightness_2);
+    if (command == 's') { 
+      if (brightness_2 > 0) {
+        brightness_2 -= 5;
+        Serial.println(brightness_2);
+      } else {
+        Serial.println(-1);
+      }
     }
 
     // Command to turn up top IR brightness
-    if (command == 'w' && brightness_1 < 255) { 
-      brightness_2 += 5;
-      Serial.println(brightness_2);
+    if (command == 'w') { 
+      if (brightness_2 < 255) {
+        brightness_2 += 5;
+        Serial.println(brightness_2);
+      } else {
+        Serial.println(-1);
+      }
     }
 
     // Command to trigger a puff
