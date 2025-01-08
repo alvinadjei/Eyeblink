@@ -99,9 +99,9 @@ void loop() {
     // Command to trigger a puff
     if (command == 'p') { 
       digitalWrite(PUFF_PIN, HIGH);
+      Serial.println("d");
       delay(25);  // Duration of the air puff (25 ms)
       digitalWrite(PUFF_PIN, LOW);
-      Serial.println("d");
     }
   }
 }

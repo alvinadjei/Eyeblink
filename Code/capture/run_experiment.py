@@ -421,9 +421,12 @@ class MainWindow(QMainWindow):
         if self.experiment_running:
             ser.write(b'p')  # send 'p' command to Arduino to trigger the puff
             response = ser.readline().decode().strip()  # Read confirmation
-            timestamp = pd.Timestamp.now()     # Record when response is received, arduino code has completed execution
-            time.sleep(0.05)  # Wait for air puff to complete
-            return timestamp
+            if response == 'd':  # check for valid confirmation message
+                timestamp = pd.Timestamp.now()     # Record when response is received, arduino code has completed execution
+                time.sleep(0.05)  # Wait for air puff to complete
+                return timestamp
+            else:
+                raise ValueError(f"Unexpected response from Arduino: {response}")
     
     def on_trial_started(self, trial_num):
         self.trial_num = trial_num
