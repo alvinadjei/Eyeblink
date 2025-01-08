@@ -1,6 +1,8 @@
 import sys
 import time
 import serial
+import threading
+import random
 import sounddevice as sd
 import cv2
 import numpy as np
@@ -12,11 +14,11 @@ from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QHBo
 # Initialize global constants
 num_trials = 10  # number of trials to run
 ISI = 0.25  # 250 ms inter-stimulus interval
-ITI = 10  # 10 second inter-trial interval
+ITI = 10 + random.uniform(-3,3)  # 10 second (on average) inter-trial interval
 arduino_port = 'COM4'  # '/dev/cu.usbserial-01C60315'  # Match this to Arduino's port, check by running 'ls /dev/cu.*' in terminal on Mac
 baud_rate = 9600  # arduino baud rate
 frequency = 880.0  # Frequency in Hz (A5) of CS
-tone_duration = 0.25     # Duration in seconds of CS
+tone_duration = 0.28     # Duration in seconds of CS
 sample_rate = 44100  # Sample rate in Hz of CS
 binary_threshold = 50  # Any pixel value in the processed image below 150 will be set to 0, and above 150 will be set to 1
 stability_threshold = 0.25  # FEC value that eye must stay below for at least 200 ms before starting next trial
@@ -404,13 +406,18 @@ class MainWindow(QMainWindow):
             # Generate the sound wave
             t = np.linspace(0, tone_duration, int(sample_rate * tone_duration), endpoint=False)
             waveform = 0.5 * np.sin(2 * np.pi * frequency * t)  # 0.5 for volume control
+            
+            # Function to play the sound and hold the reference to the waveform in memory
+            def play_sound():
+                sd.play(waveform, samplerate=sample_rate)
+                sd.wait()  # Block until playback finishes (holds the reference)
 
-            # Record the CS timestamp using cv2.getTickCount()
-            timestamp = pd.Timestamp.now()
-
-            # Play the sound
-            sd.play(waveform, samplerate=sample_rate)
-            sd.wait()  # Wait until the sound has finished playing
+            # Start the sound in a separate thread
+            sound_thread = threading.Thread(target=play_sound)
+            timestamp = pd.Timestamp.now()  # Record the CS timestamp using pd.Timestamp.now()
+            sound_thread.start()
+            
+            time.sleep(ISI)  # Wait for inter-stimulus interval
             
             # Return timestamp of stimulus onset
             return timestamp
