@@ -357,66 +357,49 @@ class MainWindow(QMainWindow):
         if self.rect_start and self.rect_end:
             x1, y1 = self.rect_start
             x2, y2 = self.rect_end
-            top_left_widget = (min(x1, x2), min(y1, y2))
-            bottom_right_widget = (max(x1, x2), max(y1, y2))
-
-            # # Map widget coordinates to the current frame's actual dimensions
-            # widget_height, widget_width = self.video_label.height(), self.video_label.width()
-            # frame_height, frame_width, _ = self.current_frame.shape
-
-            # scale_x = frame_width / widget_width
-            # scale_y = frame_height / widget_height
-
-            # top_left_frame = (int(top_left_widget[0] * scale_x), int(top_left_widget[1] * scale_y))
-            # bottom_right_frame = (int(bottom_right_widget[0] * scale_x), int(bottom_right_widget[1] * scale_y))
-
-            # self.rect_params = (top_left_frame, bottom_right_frame)
-
-            # Get the top-left and bottom-right corners of the rectangle
         
-        top_left = (min(x1, x2), min(y1, y2))
-        bottom_right = (max(x1, x2), max(y1, y2))
+            top_left = (min(x1, x2), min(y1, y2))
+            bottom_right = (max(x1, x2), max(y1, y2))
 
-        # Map rectangle coordinates from the zoomed frame to the original frame
-        if self.current_top_left and self.current_bottom_right:
-            zoom_x1, zoom_y1 = self.current_top_left
-            zoom_x2, zoom_y2 = self.current_bottom_right
+            # Map rectangle coordinates from the zoomed frame to the original frame
+            if self.top_left_zoom and self.bottom_right_zoom:
+                zoom_x1, zoom_y1 = self.top_left_zoom
+                zoom_x2, zoom_y2 = self.bottom_right_zoom
 
-            # Scale factors for the zoomed frame
-            frame_width = self.current_frame.shape[1]
-            frame_height = self.current_frame.shape[0]
-            zoom_width = zoom_x2 - zoom_x1
-            zoom_height = zoom_y2 - zoom_y1
+                # Scale factors for the zoomed frame
+                frame_width = self.current_frame.shape[1]
+                frame_height = self.current_frame.shape[0]
+                zoom_width = zoom_x2 - zoom_x1
+                zoom_height = zoom_y2 - zoom_y1
 
-            scale_x = zoom_width / frame_width
-            scale_y = zoom_height / frame_height
+                scale_x = zoom_width / frame_width
+                scale_y = zoom_height / frame_height
 
-            # Map rectangle coordinates back to the original frame
-            top_left_original = (
-                int(zoom_x1 + top_left[0] * scale_x),
-                int(zoom_y1 + top_left[1] * scale_y),
-            )
-            bottom_right_original = (
-                int(zoom_x1 + bottom_right[0] * scale_x),
-                int(zoom_y1 + bottom_right[1] * scale_y),
-            )
-        else:
-            # No zoom applied; use original frame coordinates
-            top_left_original = top_left
-            bottom_right_original = bottom_right
-            
+                # Map rectangle coordinates back to the original frame
+                top_left_original = (
+                    int(zoom_x1 + top_left[0] * scale_x),
+                    int(zoom_y1 + top_left[1] * scale_y),
+                )
+                bottom_right_original = (
+                    int(zoom_x1 + bottom_right[0] * scale_x),
+                    int(zoom_y1 + bottom_right[1] * scale_y),
+                )
+            else:
+                # No zoom applied; use original frame coordinates
+                top_left_original = top_left
+                bottom_right_original = bottom_right
+                
             if release:
-                print(f"Rectangle drawn with top_left={top_left_frame}, bottom_right={bottom_right_frame}")
+                print(f"Rectangle drawn with top_left={top_left_original}, bottom_right={bottom_right_original}")
                 
                 # Save zoom values
-                self.top_left_zoom = top_left_frame
-                self.bottom_right_zoom = bottom_right_frame
+                self.top_left_zoom = top_left_original
+                self.bottom_right_zoom = bottom_right_original
 
                 # Reset rectangle parameters
                 self.rect_start = None
                 self.rect_end = None
                 self.rect_params = None
-
     
     def update_frame(self, frame):
         if self.top_left_zoom and self.bottom_right_zoom:  # If rectangle has been drawn
