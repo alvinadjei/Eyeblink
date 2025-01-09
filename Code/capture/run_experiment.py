@@ -188,16 +188,22 @@ class MainWindow(QMainWindow):
         self.trial_num = 0
         
         # Ellipse data
-        self.drawing = False
+        self.drawing_ellipse = False
         self.ellipse_start = None
         self.ellipse_end = None
         self.ellipse_params = None
-        self.trial_in_progress = False
 
         # Save current FEC value
         self.fec_value = 0
+        
+        # Rectangle data
+        self.drawing_rect = False
+        self.rect_start = None
+        self.rect_end = None
+        self.rect_params = None
 
-        # Flag specifying if experiment is running
+        # Flags specifying if trial/experiment is running
+        self.trial_in_progress = False
         self.experiment_running = False
 
         # Integrate ExperimentThread
@@ -276,22 +282,28 @@ class MainWindow(QMainWindow):
         """Handle left click onset to begin drawing ellipse if experiment is not running
         """
         if not self.experiment_running:
-            if event.button() == Qt.LeftButton:
+            if event.button() == Qt.LeftButton:  # Left click --> Start drawing ellipse
                 # Scale the mouse coordinates to image coordinates
                 self.ellipse_start = self.scale_coords(event)
-                self.drawing = True  # Begin drawing
-            elif event.button() == Qt.RightButton:
-                #TODO: Implement zoom
-                pass
+                self.drawing_ellipse = True  # Begin drawing
+            elif event.button() == Qt.RightButton:  # Right click --> Start drawing rectangle
+                self.rect_start = self.scale_coords(event)
+                self.drawing_rect = True
+
     
     def mouseMoveEvent(self, event):
         """Handle mouse movement to draw ellipse if experiment is not running
         """
-        if self.drawing and not self.experiment_running:
-            self.ellipse_end = self.scale_coords(event)
-
-            # Calculate ellipse parameters
-            self.calculate_ellipse(release=False)
+        if not self.experiment_running:
+            if self.drawing_ellipse:
+                self.ellipse_end = self.scale_coords(event)
+                # Calculate ellipse parameters
+                self.calculate_ellipse(release=False)
+                
+            if self.drawing_rect:
+                self.rect_end = self.scale_coords(event)
+                # Calculate rectangle parameters
+                self.calculate_rectangle(release=False)
 
     def mouseReleaseEvent(self, event):
         """Handle left click release to stop drawing ellipse if experiment is not running
@@ -299,13 +311,14 @@ class MainWindow(QMainWindow):
         if not self.experiment_running:
             if event.button() == Qt.LeftButton:
                 self.ellipse_end = self.scale_coords(event)
-                self.drawing = False  # End drawing
+                self.drawing_ellipse = False  # End drawing
 
                 # Calculate ellipse parameters
                 self.calculate_ellipse(release=True)
             elif event.button() == Qt.RightButton:
-                #TODO: Implement zoom
-                pass
+                self.rect_end = self.scale_coords(event)
+                self.drawing_rect = False
+                self.calculate_rectangle()
     
     def calculate_ellipse(self, release):
         if self.ellipse_start and self.ellipse_end:
@@ -324,6 +337,18 @@ class MainWindow(QMainWindow):
             if release:
                 print(f"Ellipse drawn with center={center}, axes={axes}, angle={angle}")
     
+    def calculate_rectangle(self, release):
+        """Calculate the rectangle parameters."""
+        if self.rect_start and self.rect_end:
+            x1, y1 = self.rect_start
+            x2, y2 = self.rect_end
+            top_left = (min(x1, x2), min(y1, y2))
+            bottom_right = (max(x1, x2), max(y1, y2))
+            self.rect_params = (top_left, bottom_right)
+            if release:
+                print(f"Rectangle drawn with top_left={top_left}, bottom_right={bottom_right}")
+
+    
     def update_frame(self, frame):
         self.current_frame = frame
         if self.ellipse_params:
@@ -334,7 +359,12 @@ class MainWindow(QMainWindow):
             # Display FEC value in the top left corner
             cv2.putText(frame, f"FEC: {fec_value:.2f}", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (200, 0, 200), 3)
-
+            
+        # Draw the rectangle
+        if self.rect_params:
+            top_left, bottom_right = self.rect_params
+            cv2.rectangle(frame, top_left, bottom_right, (255, 0, 0), 2)
+            
         if self.experiment_running and self.trial_in_progress:
             timestamp = pd.Timestamp.now()
             self.fec_data = pd.concat([
