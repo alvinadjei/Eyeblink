@@ -275,10 +275,14 @@ class MainWindow(QMainWindow):
     def mousePressEvent(self, event):
         """Handle left click onset to begin drawing ellipse if experiment is not running
         """
-        if event.button() == Qt.LeftButton and not self.experiment_running:
-            # Scale the mouse coordinates to image coordinates
-            self.ellipse_start = self.scale_coords(event)
-            self.drawing = True  # Begin drawing
+        if not self.experiment_running:
+            if event.button() == Qt.LeftButton:
+                # Scale the mouse coordinates to image coordinates
+                self.ellipse_start = self.scale_coords(event)
+                self.drawing = True  # Begin drawing
+            elif event.button() == Qt.RightButton:
+                #TODO: Implement zoom
+                pass
     
     def mouseMoveEvent(self, event):
         """Handle mouse movement to draw ellipse if experiment is not running
@@ -292,12 +296,16 @@ class MainWindow(QMainWindow):
     def mouseReleaseEvent(self, event):
         """Handle left click release to stop drawing ellipse if experiment is not running
         """
-        if event.button() == Qt.LeftButton and not self.experiment_running:
-            self.ellipse_end = self.scale_coords(event)
-            self.drawing = False  # End drawing
+        if not self.experiment_running:
+            if event.button() == Qt.LeftButton:
+                self.ellipse_end = self.scale_coords(event)
+                self.drawing = False  # End drawing
 
-            # Calculate ellipse parameters
-            self.calculate_ellipse(release=True)
+                # Calculate ellipse parameters
+                self.calculate_ellipse(release=True)
+            elif event.button() == Qt.RightButton:
+                #TODO: Implement zoom
+                pass
     
     def calculate_ellipse(self, release):
         if self.ellipse_start and self.ellipse_end:
