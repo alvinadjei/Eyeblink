@@ -318,7 +318,7 @@ class MainWindow(QMainWindow):
             elif event.button() == Qt.RightButton:
                 self.rect_end = self.scale_coords(event)
                 self.drawing_rect = False
-                self.calculate_rectangle()
+                self.calculate_rectangle(release=True)
     
     def calculate_ellipse(self, release):
         if self.ellipse_start and self.ellipse_end:
