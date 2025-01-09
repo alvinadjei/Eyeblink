@@ -346,7 +346,23 @@ class MainWindow(QMainWindow):
             bottom_right = (max(x1, x2), max(y1, y2))
             self.rect_params = (top_left, bottom_right)
             if release:
-                print(f"Rectangle drawn with top_left={top_left}, bottom_right={bottom_right}")
+                # print(f"Rectangle drawn with top_left={top_left}, bottom_right={bottom_right}")
+                
+                # Crop the region of interest
+                x_min, y_min = top_left
+                x_max, y_max = bottom_right
+                cropped_frame = self.frame[y_min:y_max, x_min:x_max]
+
+                # Resize the cropped frame to match the original display size
+                zoomed_frame = cv2.resize(cropped_frame, (self.frame.shape[1], self.frame.shape[0]), interpolation=cv2.INTER_LINEAR)
+
+                # Update the displayed frame
+                self.frame = zoomed_frame
+
+                # Reset rectangle parameters
+                self.rect_start = None
+                self.rect_end = None
+                self.rect_params = None
 
     
     def update_frame(self, frame):
