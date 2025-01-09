@@ -201,6 +201,10 @@ class MainWindow(QMainWindow):
         self.rect_start = None
         self.rect_end = None
         self.rect_params = None
+        
+        # Zoom values
+        self.top_left_zoom = None
+        self.bottom_right_zoom = None
 
         # Flags specifying if trial/experiment is running
         self.trial_in_progress = False
@@ -261,6 +265,17 @@ class MainWindow(QMainWindow):
                         print(f"Top IR LED brightness: {int(response / 255 * 100)}%")
                 except Exception as e:
                     print(f"Error sending 'w' to Arduino: {e}")
+            elif event.key() == Qt.Key_R: # Check if the 'R' key is pressed, reset zoom and roi selection
+                # Reset ellipse/roi
+                self.ellipse_start = None
+                self.ellipse_end = None
+                self.ellipse_params = None
+                # Reset rectangle/zoom
+                self.rect_start = None
+                self.rect_end = None
+                self.rect_params = None
+                self.top_left_zoom = None
+                self.bottom_right_zoom = None
 
         else:
             # Call the base class implementation
@@ -342,22 +357,60 @@ class MainWindow(QMainWindow):
         if self.rect_start and self.rect_end:
             x1, y1 = self.rect_start
             x2, y2 = self.rect_end
-            top_left = (min(x1, x2), min(y1, y2))
-            bottom_right = (max(x1, x2), max(y1, y2))
-            self.rect_params = (top_left, bottom_right)
+            top_left_widget = (min(x1, x2), min(y1, y2))
+            bottom_right_widget = (max(x1, x2), max(y1, y2))
+
+            # # Map widget coordinates to the current frame's actual dimensions
+            # widget_height, widget_width = self.video_label.height(), self.video_label.width()
+            # frame_height, frame_width, _ = self.current_frame.shape
+
+            # scale_x = frame_width / widget_width
+            # scale_y = frame_height / widget_height
+
+            # top_left_frame = (int(top_left_widget[0] * scale_x), int(top_left_widget[1] * scale_y))
+            # bottom_right_frame = (int(bottom_right_widget[0] * scale_x), int(bottom_right_widget[1] * scale_y))
+
+            # self.rect_params = (top_left_frame, bottom_right_frame)
+
+            # Get the top-left and bottom-right corners of the rectangle
+        
+        top_left = (min(x1, x2), min(y1, y2))
+        bottom_right = (max(x1, x2), max(y1, y2))
+
+        # Map rectangle coordinates from the zoomed frame to the original frame
+        if self.current_top_left and self.current_bottom_right:
+            zoom_x1, zoom_y1 = self.current_top_left
+            zoom_x2, zoom_y2 = self.current_bottom_right
+
+            # Scale factors for the zoomed frame
+            frame_width = self.current_frame.shape[1]
+            frame_height = self.current_frame.shape[0]
+            zoom_width = zoom_x2 - zoom_x1
+            zoom_height = zoom_y2 - zoom_y1
+
+            scale_x = zoom_width / frame_width
+            scale_y = zoom_height / frame_height
+
+            # Map rectangle coordinates back to the original frame
+            top_left_original = (
+                int(zoom_x1 + top_left[0] * scale_x),
+                int(zoom_y1 + top_left[1] * scale_y),
+            )
+            bottom_right_original = (
+                int(zoom_x1 + bottom_right[0] * scale_x),
+                int(zoom_y1 + bottom_right[1] * scale_y),
+            )
+        else:
+            # No zoom applied; use original frame coordinates
+            top_left_original = top_left
+            bottom_right_original = bottom_right
+            
             if release:
-                # print(f"Rectangle drawn with top_left={top_left}, bottom_right={bottom_right}")
+                print(f"Rectangle drawn with top_left={top_left_frame}, bottom_right={bottom_right_frame}")
                 
-                # Crop the region of interest
-                x_min, y_min = top_left
-                x_max, y_max = bottom_right
-                cropped_frame = self.frame[y_min:y_max, x_min:x_max]
-
-                # Resize the cropped frame to match the original display size
-                zoomed_frame = cv2.resize(cropped_frame, (self.frame.shape[1], self.frame.shape[0]), interpolation=cv2.INTER_LINEAR)
-
-                # Update the displayed frame
-                self.frame = zoomed_frame
+                # Save zoom values
+                self.top_left_zoom = top_left_frame
+                self.bottom_right_zoom = bottom_right_frame
 
                 # Reset rectangle parameters
                 self.rect_start = None
@@ -366,20 +419,34 @@ class MainWindow(QMainWindow):
 
     
     def update_frame(self, frame):
-        self.current_frame = frame
+        if self.top_left_zoom and self.bottom_right_zoom:  # If rectangle has been drawn
+            # Crop the region of interest
+            x_min, y_min = self.top_left_zoom
+            x_max, y_max = self.bottom_right_zoom
+            cropped_frame = frame[y_min:y_max, x_min:x_max]
+
+            # Resize the cropped frame to match the original display size
+            zoomed_frame = cv2.resize(cropped_frame, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_LINEAR)
+
+            # Update the displayed frame
+            self.current_frame = zoomed_frame
+        else:
+            self.current_frame = frame
+            
+
         if self.ellipse_params:
             # Draw the ellipse on the frame
-            cv2.ellipse(frame, self.ellipse_params, (0, 255, 0), 2)
+            cv2.ellipse(self.current_frame, self.ellipse_params, (0, 255, 0), 2)
             # Perform FEC calculation here
-            fec_value = self.calculate_fec(frame)
+            fec_value = self.calculate_fec(self.current_frame)
             # Display FEC value in the top left corner
-            cv2.putText(frame, f"FEC: {fec_value:.2f}", (10, 30),
+            cv2.putText(self.current_frame, f"FEC: {fec_value:.2f}", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (200, 0, 200), 3)
             
         # Draw the rectangle
         if self.rect_params:
             top_left, bottom_right = self.rect_params
-            cv2.rectangle(frame, top_left, bottom_right, (255, 0, 0), 2)
+            cv2.rectangle(self.current_frame, top_left, bottom_right, (255, 0, 0), 2)
             
         if self.experiment_running and self.trial_in_progress:
             timestamp = pd.Timestamp.now()
@@ -389,7 +456,7 @@ class MainWindow(QMainWindow):
             ], ignore_index=True)
             
         # Convert the frame to QImage for display
-        rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_image = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb_image.shape
         qimage = QImage(rgb_image.data, w, h, ch * w, QImage.Format_RGB888)
         self.video_label.setPixmap(QPixmap.fromImage(qimage))
