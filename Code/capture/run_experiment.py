@@ -361,6 +361,8 @@ class MainWindow(QMainWindow):
             top_left = (min(x1, x2), min(y1, y2))
             bottom_right = (max(x1, x2), max(y1, y2))
 
+            self.rect_params = (top_left, bottom_right)
+
             # Map rectangle coordinates from the zoomed frame to the original frame
             if self.top_left_zoom and self.bottom_right_zoom:
                 zoom_x1, zoom_y1 = self.top_left_zoom
@@ -416,7 +418,6 @@ class MainWindow(QMainWindow):
         else:
             self.current_frame = frame
             
-
         if self.ellipse_params:
             # Draw the ellipse on the frame
             cv2.ellipse(self.current_frame, self.ellipse_params, (0, 255, 0), 2)
