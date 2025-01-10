@@ -363,14 +363,45 @@ class MainWindow(QMainWindow):
 
             self.rect_params = (top_left, bottom_right)
 
+            # Calculate rectangle width and height
+            rect_width = bottom_right[0] - top_left[0]
+            rect_height = bottom_right[1] - top_left[1]
+
+            # Get the aspect ratio of the original frame
+            frame_height, frame_width = self.current_frame.shape[:2]
+            aspect_ratio = frame_width / frame_height
+            
+            # Avoid division by zero
+            if rect_width == 0 or rect_height == 0:
+                print("Invalid rectangle: zero width or height.")
+                self.rect_start = None
+                self.rect_end = None
+                return
+
+            # Adjust rectangle dimensions to maintain aspect ratio
+            if rect_width / rect_height > aspect_ratio:
+                # Adjust height to match aspect ratio
+                new_height = int(rect_width / aspect_ratio)
+                height_diff = new_height - rect_height
+                top_left = (top_left[0], max(0, top_left[1] - height_diff // 2))
+                bottom_right = (bottom_right[0], min(frame_height, bottom_right[1] + height_diff // 2))
+            else:
+                # Adjust width to match aspect ratio
+                new_width = int(rect_height * aspect_ratio)
+                width_diff = new_width - rect_width
+                top_left = (max(0, top_left[0] - width_diff // 2), top_left[1])
+                bottom_right = (min(frame_width, bottom_right[0] + width_diff // 2), bottom_right[1])
+
             # Map rectangle coordinates from the zoomed frame to the original frame
             if self.top_left_zoom and self.bottom_right_zoom:
                 zoom_x1, zoom_y1 = self.top_left_zoom
                 zoom_x2, zoom_y2 = self.bottom_right_zoom
 
-                # Scale factors for the zoomed frame
+                # Calculate aspect ratio of original frame
                 frame_width = self.current_frame.shape[1]
                 frame_height = self.current_frame.shape[0]
+                
+                # Scale factors for the zoomed frame
                 zoom_width = zoom_x2 - zoom_x1
                 zoom_height = zoom_y2 - zoom_y1
 
