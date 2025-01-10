@@ -20,7 +20,7 @@ baud_rate = 9600  # arduino baud rate
 frequency = 880.0  # Frequency in Hz (A5) of CS
 tone_duration = 0.28     # Duration in seconds of CS
 sample_rate = 44100  # Sample rate in Hz of CS
-binary_threshold = 50  # Any pixel value in the processed image below 150 will be set to 0, and above 150 will be set to 1
+binary_threshold = 150  # Any pixel value in the processed image below 150 will be set to 0, and above 150 will be set to 1
 stability_threshold = 0.25  # FEC value that eye must stay below for at least 200 ms before starting next trial
 stability_duration = 0.2  # 200 ms in seconds of stability check
 
@@ -155,7 +155,14 @@ class MainWindow(QMainWindow):
             - Stop Experiment Button: The experiment will finish 
               current trial, then stop.
 
-            Key controls (set BEFORE starting experiment):
+            Mouse controls:
+            - Left mouse button: select eye area (FEC measured 
+              within this ellipse)
+            - Right mouse button: select area to zoom into
+
+            Key controls (set lighting BEFORE starting 
+            experiment):
+            - R: reset FEC roi and zoom out
             - H: Toggle house lights on/off
             - A: Decrease side IR LED's brightness
             - D: Increase side IR LED's brightness
@@ -350,7 +357,12 @@ class MainWindow(QMainWindow):
             self.ellipse_params = (center, axes, angle)
 
             if release:
-                print(f"Ellipse drawn with center={center}, axes={axes}, angle={angle}")
+                if x1 == x2 or y1 == y2:
+                    self.ellipse_start = None
+                    self.ellipse_end = None
+                    self.ellipse_params = None
+                    return
+            print(f"Ellipse drawn with center={center}, axes={axes}, angle={angle}")
     
     def calculate_rectangle(self, release):
         """Calculate the rectangle parameters."""
@@ -363,66 +375,67 @@ class MainWindow(QMainWindow):
 
             self.rect_params = (top_left, bottom_right)
 
-            # Calculate rectangle width and height
-            rect_width = bottom_right[0] - top_left[0]
-            rect_height = bottom_right[1] - top_left[1]
-
-            # Get the aspect ratio of the original frame
-            frame_height, frame_width = self.current_frame.shape[:2]
-            aspect_ratio = frame_width / frame_height
-            
-            # Avoid division by zero
-            if rect_width == 0 or rect_height == 0:
-                print("Invalid rectangle: zero width or height.")
-                self.rect_start = None
-                self.rect_end = None
-                return
-
-            # Adjust rectangle dimensions to maintain aspect ratio
-            if rect_width / rect_height > aspect_ratio:
-                # Adjust height to match aspect ratio
-                new_height = int(rect_width / aspect_ratio)
-                height_diff = new_height - rect_height
-                top_left = (top_left[0], max(0, top_left[1] - height_diff // 2))
-                bottom_right = (bottom_right[0], min(frame_height, bottom_right[1] + height_diff // 2))
-            else:
-                # Adjust width to match aspect ratio
-                new_width = int(rect_height * aspect_ratio)
-                width_diff = new_width - rect_width
-                top_left = (max(0, top_left[0] - width_diff // 2), top_left[1])
-                bottom_right = (min(frame_width, bottom_right[0] + width_diff // 2), bottom_right[1])
-
-            # Map rectangle coordinates from the zoomed frame to the original frame
-            if self.top_left_zoom and self.bottom_right_zoom:
-                zoom_x1, zoom_y1 = self.top_left_zoom
-                zoom_x2, zoom_y2 = self.bottom_right_zoom
-
-                # Calculate aspect ratio of original frame
-                frame_width = self.current_frame.shape[1]
-                frame_height = self.current_frame.shape[0]
-                
-                # Scale factors for the zoomed frame
-                zoom_width = zoom_x2 - zoom_x1
-                zoom_height = zoom_y2 - zoom_y1
-
-                scale_x = zoom_width / frame_width
-                scale_y = zoom_height / frame_height
-
-                # Map rectangle coordinates back to the original frame
-                top_left_original = (
-                    int(zoom_x1 + top_left[0] * scale_x),
-                    int(zoom_y1 + top_left[1] * scale_y),
-                )
-                bottom_right_original = (
-                    int(zoom_x1 + bottom_right[0] * scale_x),
-                    int(zoom_y1 + bottom_right[1] * scale_y),
-                )
-            else:
-                # No zoom applied; use original frame coordinates
-                top_left_original = top_left
-                bottom_right_original = bottom_right
-                
             if release:
+                # Calculate rectangle width and height
+                rect_width = bottom_right[0] - top_left[0]
+                rect_height = bottom_right[1] - top_left[1]
+
+                # Get the aspect ratio of the original frame
+                frame_height, frame_width = self.current_frame.shape[:2]
+                aspect_ratio = frame_width / frame_height
+                
+                # Avoid division by zero
+                if rect_width == 0 or rect_height == 0:
+                    # print("Invalid rectangle: zero width or height.")
+                    self.rect_start = None
+                    self.rect_end = None
+                    self.rect_params = None
+                    return
+
+                # Adjust rectangle dimensions to maintain aspect ratio
+                if rect_width / rect_height > aspect_ratio:
+                    # Adjust height to match aspect ratio
+                    new_height = int(rect_width / aspect_ratio)
+                    height_diff = new_height - rect_height
+                    top_left = (top_left[0], max(0, top_left[1] - height_diff // 2))
+                    bottom_right = (bottom_right[0], min(frame_height, bottom_right[1] + height_diff // 2))
+                else:
+                    # Adjust width to match aspect ratio
+                    new_width = int(rect_height * aspect_ratio)
+                    width_diff = new_width - rect_width
+                    top_left = (max(0, top_left[0] - width_diff // 2), top_left[1])
+                    bottom_right = (min(frame_width, bottom_right[0] + width_diff // 2), bottom_right[1])
+
+                # Map rectangle coordinates from the zoomed frame to the original frame
+                if self.top_left_zoom and self.bottom_right_zoom:
+                    zoom_x1, zoom_y1 = self.top_left_zoom
+                    zoom_x2, zoom_y2 = self.bottom_right_zoom
+
+                    # Calculate aspect ratio of original frame
+                    frame_width = self.current_frame.shape[1]
+                    frame_height = self.current_frame.shape[0]
+                    
+                    # Scale factors for the zoomed frame
+                    zoom_width = zoom_x2 - zoom_x1
+                    zoom_height = zoom_y2 - zoom_y1
+
+                    scale_x = zoom_width / frame_width
+                    scale_y = zoom_height / frame_height
+
+                    # Map rectangle coordinates back to the original frame
+                    top_left_original = (
+                        int(zoom_x1 + top_left[0] * scale_x),
+                        int(zoom_y1 + top_left[1] * scale_y),
+                    )
+                    bottom_right_original = (
+                        int(zoom_x1 + bottom_right[0] * scale_x),
+                        int(zoom_y1 + bottom_right[1] * scale_y),
+                    )
+                else:
+                    # No zoom applied; use original frame coordinates
+                    top_left_original = top_left
+                    bottom_right_original = bottom_right
+                    
                 print(f"Rectangle drawn with top_left={top_left_original}, bottom_right={bottom_right_original}")
                 
                 # Save zoom values
