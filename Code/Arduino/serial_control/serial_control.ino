@@ -1,10 +1,16 @@
 #include <Adafruit_NeoPixel.h>
 
+#define BUZZER_PIN 3 // Buzzer control pin
+#define PUFF_PIN 5 // Airpuff control pin
 #define PIX_PIN 6 // Neopixel control pin
 #define PIX_COUNT 8 // Number of NeoPixels
 #define IR_LED_1 9 // Side IR LED Control Pin
 #define IR_LED_2 10 // Top IR LED Control Pin
-#define PUFF_PIN 11 // Airpuff control pin
+
+// Define constants
+int csDuration = 280; // 280 ms duration for CS
+int ISI = 250; // 250 ms b/w CS onset and US onset
+int usDuration = 25; // 25 ms duration for US
 
 // Initialize Neopixel strip
 Adafruit_NeoPixel strip(PIX_COUNT, PIX_PIN);
@@ -24,8 +30,9 @@ void setup() {
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
   
-  // Initialize airpuff control pin
-  pinMode(PUFF_PIN, OUTPUT);
+  // Initialize control pins
+  pinMode(BUZZER_PIN, OUTPUT); // Buzzer
+  pinMode(PUFF_PIN, OUTPUT); // Air puff
 
   // Initialize serial communication
   Serial.begin(9600);
@@ -96,12 +103,19 @@ void loop() {
       }
     }
 
-    // Command to trigger a puff
-    if (command == 'p') { 
-      digitalWrite(PUFF_PIN, HIGH);
+    // Command to run trial
+    if (command == 'T') {
+      // Conditioned stimulus
+      tone(BUZZER_PIN, 10000);
       Serial.println("d");
-      delay(25);  // Duration of the air puff (25 ms)
+      delay(ISI); // Wait 250 ms before starting US
+
+      // Unconditioned stimulus
+      digitalWrite(PUFF_PIN, HIGH); // Start airpuff
+      delay(usDuration); // Duration of the air puff (25 ms)
       digitalWrite(PUFF_PIN, LOW);
+      delay(csDuration - ISI - usDuration); // Finish playing tone
+      noTone(BUZZER_PIN);
     }
   }
 }

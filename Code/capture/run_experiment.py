@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QHBo
 # Initialize global constants
 num_trials = 10  # number of trials to run
 ISI = 0.25  # 250 ms inter-stimulus interval
-ITI = 10 + random.uniform(-3,3)  # 10 second (on average) inter-trial interval
+ITI = 10  # 10 second (on average) inter-trial interval
 arduino_port = 'COM4'  # '/dev/cu.usbserial-01C60315'  # Match this to Arduino's port, check by running 'ls /dev/cu.*' in terminal on Mac
 baud_rate = 9600  # arduino baud rate
 frequency = 880.0  # Frequency in Hz (A5) of CS
@@ -76,7 +76,7 @@ class ExperimentThread(QThread):
         self.num_trials = num_trials
         self.trial_num = 0
         self.running = False
-        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "US Timestamp"])
+        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp"])
 
     def run(self):
         """Main experiment loop"""
@@ -107,16 +107,15 @@ class ExperimentThread(QThread):
         window.ensure_stability(i)  # Make sure to use `MainWindow` methods safely
         self.trial_started.emit(self.trial_num)  # Signal to `MainWindow` that the trial has started
         time.sleep(0.05)  # Simulate pre-CS timing
-        cs_timestamp = window.cond_stim()  # ISI baked into conditioned stimulus func
-        us_timestamp = window.uncond_stim()
+        cs_timestamp = window.stimuli()  # Execute CS and US
         if self.running:
-            time.sleep(ITI)  # Inter-trial interval
+            time.sleep(ITI + random.uniform(-3,3))  # Inter-trial interval (varies slightly on each trial)
 
-        if cs_timestamp and us_timestamp:
+        if cs_timestamp:
             # Save stimulus timestamps to dataframe
             self.stim_data = pd.concat([
                 self.stim_data,
-                pd.DataFrame([[i+1, cs_timestamp, us_timestamp]], columns=self.stim_data.columns)
+                pd.DataFrame([[i+1, cs_timestamp]], columns=self.stim_data.columns)
             ], ignore_index=True)
 
     def stop(self):
@@ -191,7 +190,7 @@ class MainWindow(QMainWindow):
 
         # Data
         self.fec_data = pd.DataFrame(columns=["Timestamp", "Trial #", "FEC"])
-        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "US Timestamp"])
+        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp"])
         self.trial_num = 0
         
         # Ellipse data
@@ -548,34 +547,9 @@ class MainWindow(QMainWindow):
             # Check every 10 ms
             time.sleep(0.01)
     
-    def cond_stim(self):
-        """Executes conditioned stimulus (plays the musical tone A5 for 300ms)
-        """
+    def stimuli(self):
         if self.experiment_running:
-            # Generate the sound wave
-            t = np.linspace(0, tone_duration, int(sample_rate * tone_duration), endpoint=False)
-            waveform = 0.5 * np.sin(2 * np.pi * frequency * t)  # 0.5 for volume control
-            
-            # Function to play the sound and hold the reference to the waveform in memory
-            def play_sound():
-                sd.play(waveform, samplerate=sample_rate)
-                sd.wait()  # Block until playback finishes (holds the reference)
-
-            # Start the sound in a separate thread
-            sound_thread = threading.Thread(target=play_sound)
-            timestamp = pd.Timestamp.now()  # Record the CS timestamp using pd.Timestamp.now()
-            sound_thread.start()
-            
-            time.sleep(ISI)  # Wait for inter-stimulus interval
-            
-            # Return timestamp of stimulus onset
-            return timestamp
-
-    def uncond_stim(self):
-        """Executes unconditioned stimulus (triggers airpuff)
-        """
-        if self.experiment_running:
-            ser.write(b'p')  # send 'p' command to Arduino to trigger the puff
+            ser.write(b'T')  # send 'T' command to Arduino to trigger trial
             response = ser.readline().decode().strip()  # Read confirmation
             if response == 'd':  # check for valid confirmation message
                 timestamp = pd.Timestamp.now()     # Record when response is received, arduino code has completed execution
