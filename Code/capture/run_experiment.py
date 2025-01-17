@@ -167,6 +167,8 @@ class MainWindow(QMainWindow):
             - D: Increase side IR LED's brightness
             - S: Decrease top IR LED's brightness
             - W: Increase top IR LED's brightness
+            - J: Decrease head-on IR LED's brightness
+            - K: Increase head-on IR LED's brightness
             """
         )
         self.explanation_label.setWordWrap(True)  # Wrap the text to fit the width
@@ -271,6 +273,25 @@ class MainWindow(QMainWindow):
                         print(f"Top IR LED brightness: {int(response / 255 * 100)}%")
                 except Exception as e:
                     print(f"Error sending 'w' to Arduino: {e}")
+            
+            elif event.key() == Qt.Key_J:  # Check if the 'J' key is pressed
+                try:
+                    ser.write(b'j')  # Send 'j' to the Arduino, turn head-on IR led brightness down
+                    response = int(ser.readline().decode().strip())  # Read confirmation
+                    if response != -1:
+                        print(f"Head-on IR LED brightness: {int(response / 255 * 100)}%")
+                except Exception as e:
+                    print(f"Error sending 'j' to Arduino: {e}")
+
+            elif event.key() == Qt.Key_K:  # Check if the 'K' key is pressed
+                try:
+                    ser.write(b'k')  # Send 'k' to the Arduino, turn head-on IR led brightness up
+                    response = int(ser.readline().decode().strip())  # Read confirmation
+                    if response != -1:
+                        print(f"Head-on IR LED brightness: {int(response / 255 * 100)}%")
+                except Exception as e:
+                    print(f"Error sending 'k' to Arduino: {e}")
+
             elif event.key() == Qt.Key_R: # Check if the 'R' key is pressed, reset zoom and roi selection
                 # Reset ellipse/roi
                 self.ellipse_start = None

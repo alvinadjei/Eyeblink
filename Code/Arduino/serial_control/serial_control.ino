@@ -4,8 +4,9 @@
 #define PUFF_PIN 5 // Airpuff control pin
 #define PIX_PIN 6 // Neopixel control pin
 #define PIX_COUNT 8 // Number of NeoPixels
-#define IR_LED_1 9 // Side IR LED Control Pin
-#define IR_LED_2 10 // Top IR LED Control Pin
+#define IR_LED_1 9 // Side IR LED control pin
+#define IR_LED_2 10 // Top IR LED control pin
+#define IR_LED_3 11 // Head-on IR LED control pin
 
 // Define constants
 int csDuration = 280; // 280 ms duration for CS
@@ -21,6 +22,7 @@ uint32_t white = strip.Color(180, 180, 180);
 // Define starting LED brightnesses
 int brightness_1 = 130; // Side IR LED
 int brightness_2 = 130; // Top IR LED
+int brightness_3 = 130; // Head-on IR LED
 
 // Keep track of whether neopixels are on or off
 bool pixOn = false;
@@ -43,7 +45,8 @@ void loop() {
   // Write brightness values to IR LED control pins
   analogWrite(IR_LED_1, brightness_1); // side
   analogWrite(IR_LED_2, brightness_2); // top
-
+  analogWrite(IR_LED_3, brightness_3); // head-on
+  
   if (Serial.available() > 0) {
     char command = Serial.read();
     
@@ -98,6 +101,26 @@ void loop() {
       if (brightness_2 < 255) {
         brightness_2 += 5;
         Serial.println(brightness_2);
+      } else {
+        Serial.println(-1);
+      }
+    }
+
+    // Command to turn down head-on IR brightness
+    if (command == 'j') { 
+      if (brightness_3 > 0) {
+        brightness_3 -= 5;
+        Serial.println(brightness_3);
+      } else {
+        Serial.println(-1);
+      }
+    }
+
+    // Command to turn up head-on IR brightness
+    if (command == 'k') { 
+      if (brightness_3 < 255) {
+        brightness_3 += 5;
+        Serial.println(brightness_3);
       } else {
         Serial.println(-1);
       }
