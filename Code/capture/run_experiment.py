@@ -1,5 +1,6 @@
 import sys
 import time
+from datetime import datetime
 import serial
 import threading
 import random
@@ -607,11 +608,15 @@ class MainWindow(QMainWindow):
         self.camera_thread.stop()
         self.camera_thread.stop()
 
+        # Get the current datetime
+        now = datetime.now()
+        timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")  # Format as 'YYYY-MM-DD_HH-MM-SS'
+
         # Save data to csv's
         if not self.fec_data.empty:
-            self.fec_data.to_csv(f"Code/capture/FEC/mouse_{mouse_id}_fec.csv", index=False)
+            self.fec_data.to_csv(f"Code/capture/FEC/mouse_{mouse_id}_fec_{timestamp}.csv", index=False)
         if not self.stim_data.empty:
-            self.stim_data.to_csv(f"Code/capture/stim/mouse_{mouse_id}_stim.csv", index=False)
+            self.stim_data.to_csv(f"Code/capture/stim/mouse_{mouse_id}_stim{timestamp}.csv", index=False)
         
         super().closeEvent(event)
         super().closeEvent(event)
