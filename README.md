@@ -1,6 +1,5 @@
 # Eyeblink Experiment
 
-## Overview
 This repository contains code and instructions for setting up an eyeblink conditioning experiment in mice. In this case, the conditioned stimulus is a short musical tone, 
 and the unconditioned stimulus is a short puff of air to the mouse's eye.
 
@@ -38,6 +37,7 @@ The arduino code requires the Adafruit NeoPixel library, which can be installed 
   or similar camera with ___no___ infrared filter and compatible lens (in this case, for a 1/3" sensor)
   - Camera drivers and software are <a href="https://www.alliedvision.com/en/products/software/" target="_blank">here</a>
   - Python API manual is <a href="https://docs.alliedvision.com/Vimba_X/Vimba_X_DeveloperGuide/pythonAPIManual.html">here</a>
+- Infrared mirror
 - Other materials you see in the image below come from Thorlabs:
 
 ### Images of setup here
