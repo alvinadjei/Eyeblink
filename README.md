@@ -35,8 +35,7 @@ The arduino code requires the Adafruit NeoPixel library, which can be installed 
 - 1 $\times$ passive piezoeelectric buzzer
 - 1 $\times$
   <a href="https://www.edmundoptics.com/p/allied-vision-alvium-1800-u-120m-13-12mp-c-mount-usb-31-monochrome-camera/48262/">
-    Allied Vision Alvium 1800 U-120m Monochrome Camera
-  </a>,
+    Allied Vision Alvium 1800 U-120m Monochrome Camera</a>,
   or similar camera with ___no___ infrared filter and compatible lens (in this case, for a 1/3" sensor)
   - Camera drivers and software are <a href="https://www.alliedvision.com/en/products/software/" target="_blank">here</a>
   - Python API manual is <a href="https://docs.alliedvision.com/Vimba_X/Vimba_X_DeveloperGuide/pythonAPIManual.html">here</a>
