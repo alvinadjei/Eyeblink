@@ -25,16 +25,6 @@ binary_threshold = 150  # Any pixel value in the processed image below 150 will 
 stability_threshold = 0.25  # FEC value that eye must stay below for at least 200 ms before starting next trial
 stability_duration = 0.2  # 200 ms in seconds of stability check
 
-# # Open the file containing the camera's calibration vals
-# fs = cv2.FileStorage('Code/IR Camera/calibration/calib_params.xml', cv2.FILE_STORAGE_READ)
-
-# # Read camera calibration vals and save as vars
-# mtx = fs.getNode("mtx").mat()
-# dist = fs.getNode("dist").mat()
-# rvecs = fs.getNode("rvecs").mat()
-# tvecs = fs.getNode("tvecs").mat()
-# fs.release()
-
 # Establish serial connection
 ser = serial.Serial(arduino_port, baud_rate)
 time.sleep(2)  # Wait for the connection to establish
@@ -614,9 +604,9 @@ class MainWindow(QMainWindow):
 
         # Save data to csv's
         if not self.fec_data.empty:
-            self.fec_data.to_csv(f"Code/capture/FEC/mouse_{mouse_id}_fec_{timestamp}.csv", index=False)
+            self.fec_data.to_csv(f"Data/FEC/mouse_{mouse_id}_fec_{timestamp}.csv", index=False)
         if not self.stim_data.empty:
-            self.stim_data.to_csv(f"Code/capture/stim/mouse_{mouse_id}_stim{timestamp}.csv", index=False)
+            self.stim_data.to_csv(f"Data/stim/mouse_{mouse_id}_stim{timestamp}.csv", index=False)
         
         super().closeEvent(event)
         super().closeEvent(event)

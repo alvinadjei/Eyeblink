@@ -1,7 +1,7 @@
 import cv2
 
 # Open the file for reading
-fs = cv2.FileStorage('calibration/calib_params.xml', cv2.FILE_STORAGE_READ)
+fs = cv2.FileStorage('Archived/Code/calibration/calib_params.xml', cv2.FILE_STORAGE_READ)
 
 # Read the arrays
 mtx = fs.getNode("mtx").mat()
