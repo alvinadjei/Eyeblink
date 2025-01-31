@@ -42,5 +42,3 @@ The arduino code requires the Adafruit NeoPixel library, which can be installed 
 
 ### Images of setup here
 
-
-
