@@ -10,6 +10,9 @@ Author(s): Alvin Adjei, University of California San Francisco
 ## Requirements
 ### Software
 The code for this project is written in Python and in the Arduino IDE. The required Python libraries and their versions are specified in _requirements.txt_.
+To install them, run <code>python -m pip install -r requirements.txt</code>
+in the terminal in the project's root directory.
+
 The arduino code requires the Adafruit NeoPixel library, which can be installed via the Library Manager in the Arduino IDE.
 
 ### Hardware
