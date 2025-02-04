@@ -1,6 +1,6 @@
 # Eyeblink Experiment
 
-<img src="eyeblink.jpeg" width=60%>
+<img src="eyeblink.jpeg" alt="Eyeblink setup" width=60%>
 
 This repository contains code and instructions for setting up an eyeblink conditioning experiment in mice. In this case, the conditioned stimulus is a short musical tone, 
 and the unconditioned stimulus is a short puff of air to the mouse's eye. An infrared camera records a live feed of the mouse's eye, sending each frame to a Python script
@@ -45,6 +45,13 @@ The arduino code requires the Adafruit NeoPixel library, which can be installed 
 - Infrared mirror
 - Other materials shown in the image at the top come from Thorlabs
 
+## Assembly
+<figure>
+  <img src="eyeblink_circuit.png" alt="Circuit Diagram" style="width:66%">
+  <figcaption>Circuit diagram. The resistor in the bottom left represents the picospritzer. The LEDs along the bottom are attached
+  to the left and top of the camera. The LEDS along the right are attached to a post facing the mouse head-on.</figcaption>
+</figure>
+
 ## Run Experiment
 
 <ol>
@@ -64,7 +71,7 @@ The arduino code requires the Adafruit NeoPixel library, which can be installed 
   <li>
     Now, the GUI will open. If the window doesn't appear, check the app dock for a new app running. It should look similar to this:
     <p>
-      <img src="eyeblink_gui.png" width=66%>
+      <img src="eyeblink_gui.png" alt="Eyeblink gui" width=66%>
     </p>
     <p>
       On the left, you should see a live video feed from the USB camera. On the right, there are instructions on how to adjust the brightness of the
