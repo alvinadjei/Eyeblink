@@ -44,5 +44,14 @@ The arduino code requires the Adafruit NeoPixel library, which can be installed 
 - Infrared mirror
 - Other materials shown in the image at the top come from Thorlabs
 
+## Run Experiment
 
-
+<ol>
+  <li>Clone/download the repository.</li>
+  <li>Plug USB camera and Arduino Uno into USB ports in the computer.</li>
+  <li> Open <code>Code/capture/Arduino/serial_control/serial_control.ino</code>, and upload the code to the Arduino. This file contains
+  instructions for the Arduino to execute when it receives serial instructions.</li>
+  <li>Open <code>Code/capture/run_experiment.py</code></li>
+  <li>Open the Device Manager on Windows to determine which USB port the camera is plugged into (e.g. 'COM4'), and set the <code>arduino_port</code>
+  variable equal to this name (set to <code>'COM4'</code> by default)</li>
+</ol>
