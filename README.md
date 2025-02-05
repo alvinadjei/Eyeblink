@@ -16,10 +16,10 @@ The code for this project is written in Python and in the Arduino IDE. The requi
 To install them, run <code>python -m pip install -r requirements.txt</code>
 in the terminal in the project's root directory.
 
-The arduino code requires the Adafruit NeoPixel library, which can be installed via the Library Manager in the Arduino IDE.
+The Arduino code requires the Adafruit NeoPixel library, which can be installed via the Library Manager in the Arduino IDE.
 
 ### Hardware
-- Designed to work on modern Windows computers, untested on Mac
+- Designed to work on Windows 10 and newer. Untested on Mac.
 - 1 $\times$
   <a href="https://store.arduino.cc/products/arduino-uno-rev3?srsltid=AfmBOophdIvm8RfX5799wr4zovlr1sxV1jH-H7QClWuCym0v6gZN2AgC">
     Arduino Uno
@@ -61,7 +61,7 @@ The arduino code requires the Adafruit NeoPixel library, which can be installed 
   instructions for the Arduino to execute when it receives serial instructions.</li>
   <li>Open <code>Code/capture/run_experiment.py</code></li>
   <li>Open the Device Manager on Windows to determine which USB port the camera is plugged into (e.g. 'COM4'), and set the <code>arduino_port</code>
-  variable equal to this name (this variable is set to <code>'COM4'</code> by default)</li>
+  variable equal to this name (we have set this variable to <code>'COM4'</code> by default)</li>
   <li>
     Adjust global constants like <code>num_trials</code> (number of trials in an experiment), <code>ISI</code> (inter-stimulus interval), and <code>ITI</code> (inter-trial interval)
     to your liking.
@@ -69,7 +69,7 @@ The arduino code requires the Adafruit NeoPixel library, which can be installed 
   <li>Run <code>Code/capture/run_experiment.py</code>.</li>
   <li>In the terminal, you will be prompted to enter the mouse's ID. Enter an ID of your choice and press Enter.</li>
   <li>
-    Now, the GUI will open. If the window doesn't appear, check the app dock for a new app running. It should look similar to this:
+    Now, the GUI will open. If the window doesn't appear, check the app taskbar/dock for a new app running. The window should look like this:
     <p>
       <img src="eyeblink_gui.png" alt="Eyeblink gui" width=66%>
     </p>
