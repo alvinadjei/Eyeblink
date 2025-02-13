@@ -11,13 +11,6 @@ This page is a work in progress, and will be updated as the project progresses.
 Author(s): Alvin Adjei, University of California San Francisco
 
 ## Requirements
-### Software
-The code for this project is written in Python and in the Arduino IDE. The required Python libraries and their versions are specified in _requirements.txt_.
-To install them, run <code>python -m pip install -r requirements.txt</code>
-in the terminal in the project's root directory.
-
-The Arduino code requires the Adafruit NeoPixel library, which can be installed via the Library Manager in the Arduino IDE.
-
 ### Hardware
 - Designed to work on Windows 10 and newer. Untested on Mac.
 - 1 $\times$
@@ -44,6 +37,18 @@ The Arduino code requires the Adafruit NeoPixel library, which can be installed 
   - Python API manual is <a href="https://docs.alliedvision.com/Vimba_X/Vimba_X_DeveloperGuide/pythonAPIManual.html">here</a>
 - Infrared mirror
 - Other materials shown in the image at the top come from Thorlabs
+
+### Software
+The code for this project is written in Python and in the Arduino IDE. The required Python libraries and their versions are specified in _requirements.txt_.
+To install them, run <code>python -m pip install -r requirements.txt</code>
+in the terminal in the project's root directory.
+
+The Arduino code requires the Adafruit NeoPixel library, which can be installed via the Library Manager in the Arduino IDE.
+
+To interface with the camera, install the <a href="https://www.alliedvision.com/en/products/software/vimba-x-sdk/">Vimba X SDK</a> and the
+<a href="https://docs.alliedvision.com/Vimba_X/Vimba_X_DeveloperGuide/about.html#installation">USB driver</a>. Then,
+follow the instructions found <a href="https://docs.alliedvision.com/Vimba_X/Vimba_X_DeveloperGuide/pythonAPIManual.html">here</a> to install
+Vimba X's Python API, VmbPy.
 
 ## Assembly
 <figure>
