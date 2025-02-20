@@ -1,15 +1,20 @@
 import sys
+import os
 import time
 from datetime import datetime
 import serial
 import random
 import sounddevice as sd
+import vmbpy
 import cv2
 import numpy as np
 import pandas as pd
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen
 from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QHBoxLayout, QPushButton, QWidget
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from VmbPyCode.Examples.asynchronous_grab_opencv import *
 
 # Initialize global constants
 num_trials = 10  # number of trials to run
@@ -33,6 +38,8 @@ mouse_id = input("Please input the mouse's ID: ")
 
 print('Successfully established serial connection to arduino.')
 
+
+
 class CameraThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
 
@@ -42,13 +49,35 @@ class CameraThread(QThread):
         self.running = False
 
     def run(self):
-        cap = cv2.VideoCapture(self.camera_index)
-        self.running = True
-        while self.running:
-            ret, frame = cap.read()
-            if ret:
-                self.frame_ready.emit(frame)
-        cap.release()
+        # cap = cv2.VideoCapture(self.camera_index)
+        # self.running = True
+        # while self.running:
+        #     ret, frame = cap.read()
+        #     if ret:
+        #         self.frame_ready.emit(frame)
+        # cap.release()
+
+
+        cam_id = parse_args()
+
+        with VmbSystem.get_instance():
+            with get_camera(cam_id) as cam:
+                # setup general camera settings and the pixel format in which frames are recorded
+                setup_camera(cam)
+                setup_pixel_format(cam)
+                handler = Handler()
+
+                self.running = True
+
+                try:
+                    # Start Streaming with a custom a buffer of 5 Frames
+                    cam.start_streaming(handler=handler, buffer_count=5)
+                    while self.running:
+                        frame = handler.get_image()
+                        self.frame_ready.emit(frame)
+
+                finally:
+                    cam.stop_streaming()
 
     def stop(self):
         self.running = False

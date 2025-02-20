@@ -2,4 +2,3 @@
 .venv-mac/
 *.pyc
 __pycache__/
-VmbPy/
