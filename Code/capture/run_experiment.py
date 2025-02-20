@@ -2,7 +2,6 @@ import sys
 import time
 from datetime import datetime
 import serial
-import threading
 import random
 import sounddevice as sd
 import cv2
