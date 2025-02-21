@@ -13,7 +13,9 @@ from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen
 from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QHBoxLayout, QPushButton, QWidget
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Add the project root directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 from VmbPyCode.Examples.asynchronous_grab_opencv import *
 
 # Initialize global constants
@@ -70,8 +72,8 @@ class CameraThread(QThread):
                 self.running = True
 
                 try:
-                    # Start Streaming with a custom a buffer of 5 Frames
-                    cam.start_streaming(handler=handler, buffer_count=5)
+                    # Start Streaming with a custom a buffer of 10 Frames
+                    cam.start_streaming(handler=handler, buffer_count=10)
                     while self.running:
                         frame = handler.get_image()
                         self.frame_ready.emit(frame)
