@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QHBo
 # Add the project root directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from VmbPyCode.Examples.asynchronous_grab_opencv import *
+from asynchronous_grab_opencv import *
 
 # Initialize global constants
 num_trials = 10  # number of trials to run
@@ -27,7 +27,7 @@ baud_rate = 9600  # arduino baud rate
 frequency = 880.0  # Frequency in Hz (A5) of CS
 tone_duration = 0.28     # Duration in seconds of CS
 sample_rate = 44100  # Sample rate in Hz of CS
-binary_threshold = 150  # Any pixel value in the processed image below 150 will be set to 0, and above 150 will be set to 1
+binary_threshold = 100  # Any pixel value in the processed image below 150 will be set to 0, and above 150 will be set to 1
 stability_threshold = 0.25  # FEC value that eye must stay below for at least 200 ms before starting next trial
 stability_duration = 0.2  # 200 ms in seconds of stability check
 
@@ -40,8 +40,6 @@ mouse_id = input("Please input the mouse's ID: ")
 
 print('Successfully established serial connection to arduino.')
 
-
-
 class CameraThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
 
@@ -51,22 +49,16 @@ class CameraThread(QThread):
         self.running = False
 
     def run(self):
-        # cap = cv2.VideoCapture(self.camera_index)
-        # self.running = True
-        # while self.running:
-        #     ret, frame = cap.read()
-        #     if ret:
-        #         self.frame_ready.emit(frame)
-        # cap.release()
-
 
         cam_id = parse_args()
 
         with VmbSystem.get_instance():
             with get_camera(cam_id) as cam:
                 # setup general camera settings and the pixel format in which frames are recorded
-                setup_camera(cam)
-                setup_pixel_format(cam)
+                # setup_camera(cam)
+                # setup_pixel_format(cam)
+                # Load camera settings from file.
+                cam.load_settings("Code\capture\camera_settings.xml", PersistType.All)
                 handler = Handler()
 
                 self.running = True
@@ -403,7 +395,7 @@ class MainWindow(QMainWindow):
                     self.ellipse_end = None
                     self.ellipse_params = None
                     return
-            print(f"Ellipse drawn with center={center}, axes={axes}, angle={angle}")
+                print(f"Ellipse drawn with center={center}, axes={axes}, angle={angle}")
     
     def calculate_rectangle(self, release):
         """Calculate the rectangle parameters."""
