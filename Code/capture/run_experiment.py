@@ -5,7 +5,6 @@ from datetime import datetime
 import serial
 import random
 import sounddevice as sd
-import vmbpy
 import cv2
 import numpy as np
 import pandas as pd
