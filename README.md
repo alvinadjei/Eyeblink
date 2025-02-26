@@ -53,8 +53,17 @@ Vimba X's Python API, VmbPy.
 ## Assembly
 <figure>
   <img src="eyeblink_circuit.png" alt="Circuit Diagram" style="width:66%">
-  <figcaption>Circuit diagram. The resistor in the bottom left represents the picospritzer. The LEDs along the bottom are attached
-  to the left and top of the camera. The LEDS along the right are attached to a post facing the mouse head-on.</figcaption>
+  <figcaption>
+    Circuit diagram.
+    <p>
+      <b>Note: The Adafruit NeoPixel library uses pin 11 as the default data output pin for Neopixels on Arduino boards. If using an Adafruit Metro board like we did, pin 6 is the default data output pin for the Neopixels. Make sure your circuit and code align with the board you are using by appropriately setting the <i>PIX_PIN</i> and <i>IR_LED_3</i> variables in <code>Code/capture/Arduino/serial_control/serial_control.ino</code> according to your hardware.
+      </b>
+    </p>
+    <p>
+      The resistor in the bottom left represents the picospritzer. The LEDs along the bottom are attached
+      to the left and top of the camera. The LEDS along the right are attached to a post facing the mouse head-on.
+    </p>
+  </figcaption>
 </figure>
 
 ## Run Experiment
