@@ -17,10 +17,7 @@ Author(s): Alvin Adjei, University of California San Francisco
   <a href="https://store.arduino.cc/products/arduino-uno-rev3?srsltid=AfmBOophdIvm8RfX5799wr4zovlr1sxV1jH-H7QClWuCym0v6gZN2AgC">
     Arduino Uno
   </a>
-  or similar microcontroller (we used an
-  <a href="https://www.adafruit.com/product/2488">
-    Adafruit Metro Board
-  </a>)
+  or similar microcontroller (we used an <a href="https://www.adafruit.com/product/2488">Adafruit Metro Board</a>)
 - 1 $\times$ Picospritzer III or similar device that can accept Arduino HIGH as input signal and outputs an air puff
 - 1 $\times$
   <a href="https://www.adafruit.com/product/1426">
