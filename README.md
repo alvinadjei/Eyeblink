@@ -36,7 +36,8 @@ Author(s): Alvin Adjei, University of California San Francisco
   or similar camera with ___no___ infrared filter and compatible lens (in this case, for a 1/3" sensor)
   - Camera drivers and software are <a href="https://www.alliedvision.com/en/products/software/" target="_blank">here</a>
   - Python API manual is <a href="https://docs.alliedvision.com/Vimba_X/Vimba_X_DeveloperGuide/pythonAPIManual.html">here</a>
-- Infrared mirror
+- 1 $\times$ <a href="https://www.edmundoptics.com/p/m6-and--20-mounting-plate-for-alvium/42353/">M6 and ¼-20 Mounting Plate for Alvium</a>
+- 1 $\times$ Infrared mirror
 - Other materials shown in the image at the top come from Thorlabs
 
 ### Software
