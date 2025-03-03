@@ -40,7 +40,7 @@ Author(s): Alvin Adjei, University of California San Francisco
 - Other materials shown in the image at the top come from Thorlabs
 
 ### Software
-The code for this project is written in Python and in the Arduino IDE. The required Python libraries and their versions are specified in _requirements.txt_.
+The code for this project is written in Python and in the Arduino IDE. The required Python libraries and their versions are specified in <code>requirements.txt</code>.
 To install them, run <code>python -m pip install -r requirements.txt</code>
 in the terminal in the project's root directory.
 
@@ -61,8 +61,8 @@ Vimba X's Python API, VmbPy.
       </b>
     </p>
     <p>
-      The resistor in the bottom left represents the picospritzer. The LEDs along the bottom are attached
-      to the left and top of the camera. The LEDS along the right are attached to a post facing the mouse head-on.
+      The resistor in the bottom left represents the Picospritzer. The "Side IR LED" and "Top IR LED" are attached
+      to the left and top of the camera. The "Head-on IR LEDS" are attached to a post facing the mouse head-on.
     </p>
   </figcaption>
 </figure>
