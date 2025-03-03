@@ -70,8 +70,8 @@ Vimba X's Python API, VmbPy.
 ## Run Experiment
 
 <ol>
-  <li>Clone/download the repository.</li>
-  <li>Plug USB camera and Arduino Uno into USB ports in the computer.</li>
+  <li>Clone or download this repository.</li>
+  <li>Plug USB camera and Arduino Uno into USB ports in the computer. The camera needs to be plugged into a USB 3 port, which is usually identified by having the color blue on the inside.</li>
   <li> Open <code>Code/capture/Arduino/serial_control/serial_control.ino</code>, and upload the code to the Arduino. This file contains
   instructions for the Arduino to execute when it receives serial instructions.</li>
   <li>Open <code>Code/capture/run_experiment.py</code></li>
@@ -84,7 +84,7 @@ Vimba X's Python API, VmbPy.
   <li>Run <code>Code/capture/run_experiment.py</code>.</li>
   <li>In the terminal, you will be prompted to enter the mouse's ID. Enter an ID of your choice and press Enter.</li>
   <li>
-    Now, the GUI will open. If the window doesn't appear, check the app taskbar/dock for a new app running. The window should look like this:
+    Now, the GUI will open. If the window doesn't appear, check the app taskbar/dock for a new app running. The window should look something like this:
     <p>
       <img src="eyeblink_gui.png" alt="Eyeblink gui" width=66%>
     </p>
@@ -100,7 +100,7 @@ Vimba X's Python API, VmbPy.
   </li>
   <li>
     When the experiment is over, the data will be saved to two CSV files in the <code>Data/</code> directory. Each file will have the timestamp when it was
-    saved in the name. The CSV saved to <code>Data/FEC/</code> has three columns: "Timestamp", "Trial #", and "FEC". It contains the timestamp, trial number, and
+    saved in its name. The CSV saved to <code>Data/FEC/</code> has three columns: "Timestamp", "Trial #", and "FEC". It contains the timestamp, trial number, and
     fraction of eye closure, or FEC, in each frame. The CSV saved to <code>Data/stim/</code> has two columns: "Trial #" and "CS Timestamp", containing the timestamp
     at which each trial's conditioned stimulus (in our case, the tone that plays before the airpuff) begins.
   </li>
