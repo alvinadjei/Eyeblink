@@ -28,6 +28,7 @@ Author(s): Alvin Adjei, University of California San Francisco
   </a>
 - 5 $\times$ infrared LEDs (the ones we used emit light w/ 850nm wavelength)
 - 5 $\times$ 220 $\Omega$ resistors
+- 1 $\times$ N-Channel MOSFET
 - 1 $\times$ passive piezoeelectric buzzer
 - 1 $\times$
   <a href="https://www.edmundoptics.com/p/allied-vision-alvium-1800-u-120m-13-12mp-c-mount-usb-31-monochrome-camera/48262/">
