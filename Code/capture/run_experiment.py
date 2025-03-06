@@ -245,7 +245,7 @@ class MainWindow(QMainWindow):
             if event.key() == Qt.Key_H:  # Check if the 'H' key is pressed
                 try:
                     ser.write(b'h')  # Send 'h' to the Arduino, toggle houselights on/off
-                    response = int(ser.readline().decode().strip())  # Read confirmation
+                    response = ser.readline().decode().strip()  # Read confirmation
                     print(f"Houselight turned {response}")
                 except Exception as e:
                     print(f"Error sending 'h' to Arduino: {e}")

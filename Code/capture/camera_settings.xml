@@ -21,7 +21,7 @@
             <Feature Name="StreamSelector" Value="0" Type="Int" />
         </LocalDevice>
         <RemoteDevice>
-            <Feature Name="AcquisitionFrameRate" Value="46.7492" Type="Float" />
+            <Feature Name="AcquisitionFrameRate" Value="22.84968" Type="Float" />
             <Feature Name="AcquisitionFrameRateEnable" Value="0" Type="Bool" />
             <Feature Name="AcquisitionFrameRateMode" Value="Basic" Type="Enum" />
             <Feature Name="AcquisitionMode" Value="Continuous" Type="Enum" />
@@ -29,7 +29,7 @@
                 <Feature Name="AcquisitionStatus" Value="1" Type="Bool" />
             </SelectorGroup>
             <SelectorGroup Name="AcquisitionStatusSelector" Type="Enum" Value="AcquisitionTransfer">
-                <Feature Name="AcquisitionStatus" Value="1" Type="Bool" />
+                <Feature Name="AcquisitionStatus" Value="0" Type="Bool" />
             </SelectorGroup>
             <Feature Name="AcquisitionStatusSelector" Value="AcquisitionActive" Type="Enum" />
             <Feature Name="AdaptiveNoiseSuppressionFactor" Value="1" Type="Float" />
@@ -256,7 +256,7 @@
             <Feature Name="DeviceTLVersionMajor" Value="1" Type="Int" />
             <Feature Name="DeviceTLVersionMinor" Value="1" Type="Int" />
             <SelectorGroup Name="DeviceTemperatureSelector" Type="Enum" Value="Mainboard">
-                <Feature Name="DeviceTemperature" Value="43" Type="Float" />
+                <Feature Name="DeviceTemperature" Value="40.2" Type="Float" />
             </SelectorGroup>
             <Feature Name="DeviceTemperatureSelector" Value="Mainboard" Type="Enum" />
             <Feature Name="DeviceTemperatureStatus" Value="OK" Type="Enum" />
@@ -374,7 +374,7 @@
             <Feature Name="ExposureAutoMax" Value="1102379" Type="Float" />
             <Feature Name="ExposureAutoMin" Value="56.074" Type="Float" />
             <Feature Name="ExposureMode" Value="Timed" Type="Enum" />
-            <Feature Name="ExposureTime" Value="2504.642" Type="Float" />
+            <Feature Name="ExposureTime" Value="24878.2" Type="Float" />
             <Feature Name="FileProcessStatus" Value="None" Type="Enum" />
             <SelectorGroup Name="FileSelector" Type="Enum" Value="Firmware">
                 <SelectorGroup Name="FileOperationSelector" Type="Enum" Value="Open">
