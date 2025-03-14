@@ -14,6 +14,8 @@ from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QHBo
 
 # Add the project root directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+fec_dir = os.path.join("Data", "fec")
+stim_dir = os.path.join("Data", "stim")
 
 from asynchronous_grab_opencv import *
 
@@ -559,7 +561,23 @@ class MainWindow(QMainWindow):
         self.experiment_running = False
         self.start_button.setText("Start Experiment")
         self.experiment_thread.stop()
-    
+
+        fec_data, stim_data = self.fec_data, self.stim_data  # save collected data
+
+        # Get the current datetime
+        now = datetime.now()
+        timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")  # Format as 'YYYY-MM-DD_HH-MM-SS'
+
+        # Save data to csv's
+        if not fec_data.empty:
+            fec_csv = os.path.join(fec_dir, "mouse_{}_fec_{}.csv".format(mouse_id, timestamp))
+            fec_data.to_csv(fec_csv, index=False)
+            print(f"Saved FEC data to {fec_csv}")
+        if not stim_data.empty:
+            stim_csv = os.path.join(stim_dir, "mouse_{}_stim_{}.csv".format(mouse_id, timestamp))
+            stim_data.to_csv(stim_csv, index=False)
+            print(f"Saved stim data to {stim_csv}")
+
     def ensure_stability(self, i):
         """Check if FEC stays above 0.75 for at least 200 ms
         """
@@ -619,16 +637,6 @@ class MainWindow(QMainWindow):
         self.camera_thread.stop()
         self.camera_thread.stop()
 
-        # Get the current datetime
-        now = datetime.now()
-        timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")  # Format as 'YYYY-MM-DD_HH-MM-SS'
-
-        # Save data to csv's
-        if not self.fec_data.empty:
-            self.fec_data.to_csv(f"Data/FEC/mouse_{mouse_id}_fec_{timestamp}.csv", index=False)
-        if not self.stim_data.empty:
-            self.stim_data.to_csv(f"Data/stim/mouse_{mouse_id}_stim{timestamp}.csv", index=False)
-        
         super().closeEvent(event)
         super().closeEvent(event)
 
