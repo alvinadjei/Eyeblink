@@ -14,9 +14,7 @@ from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QHBo
 
 # Add the project root directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-fec_dir = os.path.join("Data", "fec")
-stim_dir = os.path.join("Data", "stim")
-
+fec_dir, stim_dir = os.path.join("Data", "fec"), os.path.join("Data", "stim")
 from asynchronous_grab_opencv import *
 
 # Initialize global constants
@@ -28,7 +26,7 @@ baud_rate = 9600  # arduino baud rate
 frequency = 880.0  # Frequency in Hz (A5) of CS
 tone_duration = 0.28     # Duration in seconds of CS
 sample_rate = 44100  # Sample rate in Hz of CS
-binary_threshold = 100  # Any pixel value in the processed image below 150 will be set to 0, and above 150 will be set to 1
+binary_threshold = 70  # Any pixel value in the processed image below this value will be set to 0, and above this value will be set to 1
 stability_threshold = 0.25  # FEC value that eye must stay below for at least 200 ms before starting next trial
 stability_duration = 0.2  # 200 ms in seconds of stability check
 
@@ -575,6 +573,7 @@ class MainWindow(QMainWindow):
             print(f"Saved FEC data to {fec_csv}")
         if not stim_data.empty:
             stim_csv = os.path.join(stim_dir, "mouse_{}_stim_{}.csv".format(mouse_id, timestamp))
+            print(stim_data.head())
             stim_data.to_csv(stim_csv, index=False)
             print(f"Saved stim data to {stim_csv}")
 
