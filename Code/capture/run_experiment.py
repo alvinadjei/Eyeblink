@@ -26,7 +26,7 @@ baud_rate = 9600  # arduino baud rate
 frequency = 880.0  # Frequency in Hz (A5) of CS
 tone_duration = 0.28     # Duration in seconds of CS
 sample_rate = 44100  # Sample rate in Hz of CS
-binary_threshold = 70  # Any pixel value in the processed image below this value will be set to 0, and above this value will be set to 1
+binary_threshold = 100  # Any pixel value in the processed image below this value will be set to 0, and above this value will be set to 1
 stability_threshold = 0.25  # FEC value that eye must stay below for at least 200 ms before starting next trial
 stability_duration = 0.2  # 200 ms in seconds of stability check
 
