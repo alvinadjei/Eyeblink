@@ -108,9 +108,8 @@ class ExperimentThread(QThread):
             self.stability_error.emit(str(e))
 
         finally:
-            self.running = False
-            self.stim_collector.emit(self.stim_data)
             time.sleep(0.5) # Leave time for stim_data to be saved
+            self.running = False
             self.experiment_finished.emit()
 
     def run_trial(self, i):
@@ -119,16 +118,19 @@ class ExperimentThread(QThread):
         window.ensure_stability(i)  # Make sure to use `MainWindow` methods safely
         self.trial_started.emit(self.trial_num)  # Signal to `MainWindow` that the trial has started
         time.sleep(0.05)  # Simulate pre-CS timing
-        cs_timestamp = window.stimuli()  # Execute CS and US
-        if self.running:
-            time.sleep(ITI + random.uniform(-3,3))  # Inter-trial interval (varies slightly on each trial)
+        cs_timestamp = window.stimuli()  # Execute CS and US        
 
-        if cs_timestamp:
+        if cs_timestamp is not None:
             # Save stimulus timestamps to dataframe
             self.stim_data = pd.concat([
                 self.stim_data,
                 pd.DataFrame([[i+1, cs_timestamp]], columns=self.stim_data.columns)
             ], ignore_index=True)
+
+            self.stim_collector.emit(self.stim_data)
+
+        if self.running:
+            time.sleep(ITI + random.uniform(-3,3))  # Inter-trial interval (varies slightly on each trial)
 
     def stop(self):
         """Gracefully stop the thread"""
@@ -561,6 +563,9 @@ class MainWindow(QMainWindow):
         self.experiment_thread.stop()
 
         fec_data, stim_data = self.fec_data, self.stim_data  # save collected data
+
+        print(fec_data.head())
+        print(stim_data.head())
 
         # Get the current datetime
         now = datetime.now()
