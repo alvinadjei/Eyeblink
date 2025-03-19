@@ -564,9 +564,6 @@ class MainWindow(QMainWindow):
 
         fec_data, stim_data = self.fec_data, self.stim_data  # save collected data
 
-        print(fec_data.head())
-        print(stim_data.head())
-
         # Get the current datetime
         now = datetime.now()
         timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")  # Format as 'YYYY-MM-DD_HH-MM-SS'
@@ -578,7 +575,6 @@ class MainWindow(QMainWindow):
             print(f"Saved FEC data to {fec_csv}")
         if not stim_data.empty:
             stim_csv = os.path.join(stim_dir, "mouse_{}_stim_{}.csv".format(mouse_id, timestamp))
-            print(stim_data.head())
             stim_data.to_csv(stim_csv, index=False)
             print(f"Saved stim data to {stim_csv}")
 
@@ -632,7 +628,11 @@ class MainWindow(QMainWindow):
         print(f"Stability check failed: {error_message}")        
 
     def save_stim_data(self, stim_data):
-        self.stim_data = stim_data
+        # self.stim_data = stim_data
+        self.stim_data = pd.concat(
+            [self.stim_data, stim_data.iloc[[-1]]],
+            ignore_index=True,
+        )
 
     def closeEvent(self, event):
         if self.experiment_thread.isRunning():
