@@ -18,17 +18,18 @@ fec_dir, stim_dir = os.path.join("Data", "fec"), os.path.join("Data", "stim")
 from asynchronous_grab_opencv import *
 
 # Initialize global constants
-num_trials = 10  # number of trials to run
+num_trials = 110  # number of trials to run
 ISI = 0.25  # 250 ms inter-stimulus interval
-ITI = 10  # 10 second (on average) inter-trial interval
+ITI = 12.5  # 12.5 second (on average) inter-trial interval
 arduino_port = 'COM4'  # '/dev/cu.usbserial-01C60315'  # Match this to Arduino's port, check by running 'ls /dev/cu.*' in terminal on Mac
 baud_rate = 9600  # arduino baud rate
-frequency = 880.0  # Frequency in Hz (A5) of CS
+# frequency = 880.0  # Unused variable # Frequency in Hz (A5) of CS
 tone_duration = 0.28     # Duration in seconds of CS
 sample_rate = 44100  # Sample rate in Hz of CS
 binary_threshold = 100  # Any pixel value in the processed image below this value will be set to 0, and above this value will be set to 1
 stability_threshold = 0.25  # FEC value that eye must stay below for at least 200 ms before starting next trial
 stability_duration = 0.2  # 200 ms in seconds of stability check
+training = True  # TODO: finish implementation; If True, run 10 trials with no air puff
 
 # Establish serial connection
 ser = serial.Serial(arduino_port, baud_rate)
@@ -87,16 +88,25 @@ class ExperimentThread(QThread):
         super().__init__(parent)
         self.num_trials = num_trials
         self.trial_num = 0
+        self.trial_has_puff = True
         self.running = False
-        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp"])
+        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff"])
 
     def run(self):
         """Main experiment loop"""
         self.running = True
+        no_puff_trials = random.sample(range(10, self.num_trials), 10)  # Randomly select 10 trials to not have a puff
         try:
             for i in range(self.num_trials):
                 if not self.running:
                     break
+                # Check if the trial is a no-puff trial
+                if self.trial_num in no_puff_trials:
+                    self.trial_has_puff = False  # Randomly select 10 trials to not have a puff
+                    print(f"Trial {i+1} will not have a puff.")
+                else:
+                    self.trial_has_puff = True  # Trial will have a puff
+                # Update trial number
                 self.trial_num = i + 1
 
                 # Run a single trial
@@ -124,13 +134,13 @@ class ExperimentThread(QThread):
             # Save stimulus timestamps to dataframe
             self.stim_data = pd.concat([
                 self.stim_data,
-                pd.DataFrame([[i+1, cs_timestamp]], columns=self.stim_data.columns)
+                pd.DataFrame([[i+1, cs_timestamp, self.trial_has_puff]], columns=self.stim_data.columns)
             ], ignore_index=True)
 
             self.stim_collector.emit(self.stim_data)
 
         if self.running:
-            time.sleep(ITI + random.uniform(-3,3))  # Inter-trial interval (varies slightly on each trial)
+            time.sleep(ITI + random.gauss(0,3))  # Inter-trial interval (mu = 12.5, sigma = 3)
 
     def stop(self):
         """Gracefully stop the thread"""
@@ -206,7 +216,7 @@ class MainWindow(QMainWindow):
 
         # Data
         self.fec_data = pd.DataFrame(columns=["Timestamp", "Trial #", "FEC"])
-        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp"])
+        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff"])
         self.trial_num = 0
         
         # Ellipse data

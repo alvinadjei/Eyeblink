@@ -9,9 +9,9 @@
 #define IR_LED_3 11 // Head-on IR LED control pin
 
 // Define constants
-int csDuration = 280; // 280 ms duration for CS
-int ISI = 250; // 250 ms b/w CS onset and US onset
-int usDuration = 25; // 25 ms duration for US
+int csDuration = 350; // 300 ms duration for CS
+int ISI = 300; // 250 ms b/w CS onset and US onset
+int usDuration = 50; // 25 ms duration for US
 
 // Initialize Neopixel strip
 Adafruit_NeoPixel strip(PIX_COUNT, PIX_PIN);
