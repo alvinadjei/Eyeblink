@@ -19,7 +19,7 @@ from asynchronous_grab_opencv import *
 
 # Initialize global constants
 num_trials = 110  # number of trials to run
-ISI = 0.25  # 250 ms inter-stimulus interval
+# ISI = 0.25  # 250 ms inter-stimulus interval
 ITI = 12.5  # 12.5 second (on average) inter-trial interval
 arduino_port = 'COM4'  # '/dev/cu.usbserial-01C60315'  # Match this to Arduino's port, check by running 'ls /dev/cu.*' in terminal on Mac
 baud_rate = 9600  # arduino baud rate
@@ -128,7 +128,7 @@ class ExperimentThread(QThread):
         window.ensure_stability(i)  # Make sure to use `MainWindow` methods safely
         self.trial_started.emit(self.trial_num)  # Signal to `MainWindow` that the trial has started
         time.sleep(0.05)  # Simulate pre-CS timing
-        cs_timestamp = window.stimuli()  # Execute CS and US        
+        cs_timestamp = window.stimuli(self.trial_has_puff)  # Execute CS and US        
 
         if cs_timestamp is not None:
             # Save stimulus timestamps to dataframe
@@ -608,9 +608,10 @@ class MainWindow(QMainWindow):
             # Check every 10 ms
             time.sleep(0.01)
     
-    def stimuli(self):
+    def stimuli(self, has_puff):
+        message = b'T' if has_puff else b'F'
         if self.experiment_running:
-            ser.write(b'T')  # send 'T' command to Arduino to trigger trial
+            ser.write(message)  # send 'T' command to Arduino to trigger trial
             response = ser.readline().decode().strip()  # Read confirmation
             if response == 'd':  # check for valid confirmation message
                 timestamp = pd.Timestamp.now()     # Record when response is received, arduino code has completed execution

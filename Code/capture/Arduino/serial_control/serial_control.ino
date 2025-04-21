@@ -125,18 +125,24 @@ void loop() {
         Serial.println(-1);
       }
     }
-
+    
     // Command to run trial
-    if (command == 'T') {
+    if (command == 'T' || command == 'F') {
       // Conditioned stimulus
-      tone(BUZZER_PIN, 10000);
       Serial.println("d");
+      tone(BUZZER_PIN, 10000);
       delay(ISI); // Wait 250 ms before starting US
 
-      // Unconditioned stimulus
-      digitalWrite(PUFF_PIN, HIGH); // Start airpuff
-      delay(usDuration); // Duration of the air puff (25 ms)
-      digitalWrite(PUFF_PIN, LOW);
+      // If command is 'F', don't do airpuff
+      if (command == 'T') {
+        // Unconditioned stimulus
+        digitalWrite(PUFF_PIN, HIGH); // Start airpuff
+        delay(usDuration); // Duration of the air puff (25 ms)
+        digitalWrite(PUFF_PIN, LOW);
+      } else { // no airpuff
+        delay(usDuration); // Duration of the air puff (25 ms)
+      }
+
       delay(csDuration - ISI - usDuration); // Finish playing tone
       noTone(BUZZER_PIN);
     }
