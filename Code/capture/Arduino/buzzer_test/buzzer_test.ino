@@ -31,9 +31,9 @@ void loop() {
   
   // Play buzzer for 3 seconds
   tone(BUZZER_PIN, 10000);
-  delay(3000);
+  delay(1000);
 
   // Turn off buzzer for 1 second
   noTone(BUZZER_PIN);
-  delay(1000);
+  delay(3000);
 }
