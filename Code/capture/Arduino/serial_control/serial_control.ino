@@ -9,9 +9,9 @@
 #define IR_LED_3 11 // Head-on IR LED control pin
 
 // Define constants
-int csDuration = 350; // 300 ms duration for CS
-int ISI = 300; // 250 ms b/w CS onset and US onset
-int usDuration = 50; // 25 ms duration for US
+int csDuration = 350; // 350 ms duration for CS
+int ISI = 300; // 300 ms b/w CS onset and US onset
+int usDuration = 50; // 50 ms duration for US
 
 // Initialize Neopixel strip
 Adafruit_NeoPixel strip(PIX_COUNT, PIX_PIN);
@@ -131,16 +131,16 @@ void loop() {
       // Conditioned stimulus
       Serial.println("d");
       tone(BUZZER_PIN, 10000);
-      delay(ISI); // Wait 250 ms before starting US
+      delay(ISI); // Wait for ISI before starting US
 
       // If command is 'F', don't do airpuff
       if (command == 'T') {
         // Unconditioned stimulus
         digitalWrite(PUFF_PIN, HIGH); // Start airpuff
-        delay(usDuration); // Duration of the air puff (25 ms)
+        delay(usDuration); // Duration of the air puff
         digitalWrite(PUFF_PIN, LOW);
       } else { // no airpuff
-        delay(usDuration); // Duration of the air puff (25 ms)
+        delay(usDuration); // Duration of the air puff
       }
 
       delay(csDuration - ISI - usDuration); // Finish playing tone
