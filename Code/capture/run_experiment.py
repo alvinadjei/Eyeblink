@@ -27,7 +27,7 @@ baud_rate = 9600  # arduino baud rate
 tone_duration = 0.28     # Duration in seconds of CS
 sample_rate = 44100  # Sample rate in Hz of CS
 binary_threshold = 55  # Any pixel value in the processed image below this value will be set to 0, and above this value will be set to 1
-stability_threshold = 0.25  # FEC value that eye must stay below for at least 200 ms before starting next trial
+stability_threshold = 0.7  # FEC value that eye must stay below for at least 200 ms before starting next trial, ~75% oprn
 stability_duration = 0.2  # 200 ms in seconds of stability check
 training = True  # TODO: finish implementation; If True, run 10 trials with no air puff
 
@@ -630,8 +630,7 @@ class MainWindow(QMainWindow):
         print(f"Trial {trial_num} completed.")
 
     def on_experiment_finished(self):
-        self.experiment_running = False
-        self.start_button.setText("Start Experiment")
+        self.stop_experiment()  # Stop experiment gracefully and save data
         
         print("Experiment finished!")
 
