@@ -25,7 +25,7 @@ int brightness_2 = 255; // Top IR LED
 int brightness_3 = 255; // Head-on IR LED
 
 // Keep track of whether neopixels are on or off
-bool pixOn = false;
+bool pixOn = true;
 
 void setup() {
   // Setup neopixel strip
@@ -46,15 +46,9 @@ void loop() {
   analogWrite(IR_LED_1, brightness_1); // side
   analogWrite(IR_LED_2, brightness_2); // top
   analogWrite(IR_LED_3, brightness_3); // head-on
-  
-  if (Serial.available() > 0) {
-    char command = Serial.read();
-    
-    // Command to toggle houselight
-    if (command == 'h') { 
-      pixOn = !pixOn; // toggle pixOn bool
 
-      if (pixOn) { // switch pixels on
+  // Turn overhead light on/off depending on value of pixOn
+  if (pixOn) { // switch pixels on
         strip.fill(white); // Turn all pixels white
         strip.show(); // Push data to NeoPixel
         Serial.println("on");
@@ -64,6 +58,13 @@ void loop() {
         strip.show();
         Serial.println("off");
       }
+  
+  if (Serial.available() > 0) {
+    char command = Serial.read();
+    
+    // Command to toggle houselight
+    if (command == 'h') { 
+      pixOn = !pixOn; // toggle pixOn bool
     }
 
     // Command to turn down side IR brightness
