@@ -51,12 +51,11 @@ void loop() {
   if (pixOn) { // switch pixels on
         strip.fill(white); // Turn all pixels white
         strip.show(); // Push data to NeoPixel
-        Serial.println("on");
+        
       } else { // switch pixels off
         // Turn off all pixels
         strip.clear();
         strip.show();
-        Serial.println("off");
       }
   
   if (Serial.available() > 0) {
@@ -65,6 +64,11 @@ void loop() {
     // Command to toggle houselight
     if (command == 'h') { 
       pixOn = !pixOn; // toggle pixOn bool
+      if (pixOn) {
+        Serial.println("on");
+      } else {
+        Serial.println("off");
+      }
     }
 
     // Command to turn down side IR brightness
