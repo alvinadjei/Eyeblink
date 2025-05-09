@@ -70,13 +70,12 @@ Vimba X's Python API, VmbPy.
 <ol>
   <li>Clone or download this repository.</li>
   <li>Plug USB camera and Arduino Uno into USB ports in the computer. The camera needs to be plugged into a USB 3 port, which is usually identified by having the color blue on the inside.</li>
-  <li> Open <code>Code/capture/Arduino/serial_control/serial_control.ino</code>, and upload the code to the Arduino. This file contains
-  instructions for the Arduino to execute when it receives serial instructions.</li>
+  <li> Open <code>Code/capture/Arduino/serial_control/serial_control.ino</code>. This file contains instructions for the Arduino to execute when it receives serial instructions. Here, you can adjust constants like <code>csDuration</code> (how long the tone plays), <code>ISI</code> (inter-stimulus interval), and <code>usDuration</code> (how long the airpuff lasts) to your liking. Then, upload the code to the Arduino.</li>
   <li>Open <code>Code/capture/run_experiment.py</code></li>
   <li>Open the Device Manager on Windows to determine which USB port the camera is plugged into (e.g. 'COM4'), and set the <code>arduino_port</code>
   variable equal to this name (we have set this variable to <code>'COM4'</code> by default)</li>
   <li>
-    Adjust global constants like <code>num_trials</code> (number of trials in an experiment), <code>ISI</code> (inter-stimulus interval), and <code>ITI</code> (inter-trial interval)
+    Adjust global constants like <code>num_trials</code> (number of trials in an experiment) and <code>ITI</code> (inter-trial interval)
     to your liking.
   </li>
   <li>Run <code>Code/capture/run_experiment.py</code>.</li>
@@ -98,8 +97,8 @@ Vimba X's Python API, VmbPy.
   </li>
   <li>
     When the experiment is over, the data will be saved to two CSV files in the <code>Data/</code> directory. Each file will have the timestamp when it was
-    saved in its name. The CSV saved to <code>Data/FEC/</code> has three columns: "Timestamp", "Trial #", and "FEC". It contains the timestamp, trial number, and
-    fraction of eye closure, or FEC, in each frame. The CSV saved to <code>Data/stim/</code> has two columns: "Trial #" and "CS Timestamp", containing the timestamp
-    at which each trial's conditioned stimulus (in our case, the tone that plays before the airpuff) begins.
+    saved in its name. The CSV saved to <code>Data/FEC/{mouse_id}/</code> has three columns: "Timestamp", "Trial #", and "FEC". It contains the timestamp, trial number, and
+    fraction of eye closure, or FEC, in each frame. The CSV saved to <code>Data/stim/{mouse_id}/</code> has three columns: "Trial #", "CS Timestamp", and "Airpuff" containing the timestamp
+    at which each trial's conditioned stimulus (in our case, the tone that plays before the airpuff) begins and whether an unconditioned stimulus (air puff) was executed during that trial.
   </li>
 </ol>
