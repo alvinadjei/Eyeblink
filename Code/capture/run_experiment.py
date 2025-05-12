@@ -508,10 +508,10 @@ class MainWindow(QMainWindow):
         if self.ellipse_params:
             # Draw the ellipse on the frame
             cv2.ellipse(self.current_frame, self.ellipse_params, (0, 255, 0), 2)
-            # Perform FEC calculation here
-            fec_value = self.calculate_fec(self.current_frame)
+            # Perform FEC calculation here, then display normalized value [0, 100]
+            fec_disp = self.calculate_fec(self.current_frame)
             # Display FEC value in the top left corner
-            cv2.putText(self.current_frame, f"FEC: {fec_value:.2f}", (10, 30),
+            cv2.putText(self.current_frame, f"FEC: {fec_disp:.2f}", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (200, 0, 200), 3)
             
         # Draw the rectangle
@@ -523,7 +523,7 @@ class MainWindow(QMainWindow):
             timestamp = pd.Timestamp.now()
             self.fec_data = pd.concat([
                 self.fec_data,
-                pd.DataFrame([[timestamp, self.trial_num, fec_value]], columns=self.fec_data.columns)
+                pd.DataFrame([[timestamp, self.trial_num, fec_disp]], columns=self.fec_data.columns)
             ], ignore_index=True)
             
         # Convert the frame to QImage for display
@@ -547,8 +547,15 @@ class MainWindow(QMainWindow):
             lighter_pixels = cv2.countNonZero(roi)
             total_pixels = cv2.countNonZero(mask)
             self.fec_value = lighter_pixels / total_pixels if total_pixels > 0 else 0
-            return self.fec_value
-        return 0
+
+            # Normalize self.fec_value to value b/w 0 and 100; 0 --> fully open, 100 --> fully closed
+            if self.fec_value <= 0.6:
+                return 0
+            elif self.fec_value >= 0.9:
+                return 100
+            else:
+                # Normalize from [0.6, 0.9] to [0, 100]
+                return int((self.fec_value - 0.6) / (0.9 - 0.5) * 100)
     
     def start_experiment(self):
         if not self.experiment_running:
