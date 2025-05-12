@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QHBo
 
 # Add the project root directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-fec_dir, stim_dir = os.path.join("Data", "fec"), os.path.join("Data", "stim")
+fec_dir, stim_dir, video_dir = os.path.join("Data", "fec"), os.path.join("Data", "stim"), os.path.join("Data", "video")
 from asynchronous_grab_opencv import *
 
 # Initialize global constants
@@ -29,12 +29,20 @@ stability_threshold = 0.7  # FEC value that eye must stay below for at least 200
 stability_duration = 0.2  # 200 ms in seconds of stability check
 training = True  # TODO: finish implementation; If True, run 10 trials with no air puff
 
+# Get the current datetime (used in saved-data file names)
+now = datetime.now()
+start_time = now.strftime("%Y-%m-%d_%H-%M-%S")  # Format as 'YYYY-MM-DD_HH-MM-SS'
+
 # Establish serial connection
 ser = serial.Serial(arduino_port, baud_rate)
 time.sleep(2)  # Wait for the connection to establish
 
 # Mouse ID
 mouse_id = input("Please input the mouse's ID: ")
+
+# Initialize video subdirectory var
+video_mouse_dir = os.path.join(video_dir, mouse_id)
+frame_x, frame_y = 1280, 960  # Frame dimensions
 
 print('Successfully established serial connection to arduino.')
 
@@ -64,8 +72,10 @@ class CameraThread(QThread):
                 try:
                     # Start Streaming with a custom a buffer of 10 Frames
                     cam.start_streaming(handler=handler, buffer_count=10)
+
                     while self.running:
                         frame = handler.get_image()
+                        frame_x, frame_y = frame.shape[1], frame.shape[0]
                         self.frame_ready.emit(frame)
 
                 finally:
@@ -240,6 +250,10 @@ class MainWindow(QMainWindow):
         # Flags specifying if trial/experiment is running
         self.trial_in_progress = False
         self.experiment_running = False
+
+        # Initialize video file
+        self.video_file = os.path.join(video_mouse_dir, f"{mouse_id}_{start_time}.avi")
+        self.out = None  # VideoWriter object for saving video
 
         # Integrate ExperimentThread
         self.experiment_thread = ExperimentThread()
@@ -491,6 +505,11 @@ class MainWindow(QMainWindow):
                 self.rect_params = None
     
     def update_frame(self, frame):
+
+        if self.experiment_running:
+            if self.out:
+                self.out.write(frame)
+
         if self.top_left_zoom and self.bottom_right_zoom:  # If rectangle has been drawn
             # Crop the region of interest
             x_min, y_min = self.top_left_zoom
@@ -518,13 +537,13 @@ class MainWindow(QMainWindow):
         if self.rect_params:
             top_left, bottom_right = self.rect_params
             cv2.rectangle(self.current_frame, top_left, bottom_right, (255, 0, 0), 2)
-            
+        
         if self.experiment_running and self.trial_in_progress:
-            timestamp = pd.Timestamp.now()
-            self.fec_data = pd.concat([
-                self.fec_data,
-                pd.DataFrame([[timestamp, self.trial_num, fec_disp]], columns=self.fec_data.columns)
-            ], ignore_index=True)
+                timestamp = pd.Timestamp.now()
+                self.fec_data = pd.concat([
+                    self.fec_data,
+                    pd.DataFrame([[timestamp, self.trial_num, fec_disp]], columns=self.fec_data.columns)
+                ], ignore_index=True)
             
         # Convert the frame to QImage for display
         rgb_image = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2RGB)
@@ -561,6 +580,10 @@ class MainWindow(QMainWindow):
         if not self.experiment_running:
             
             if self.ellipse_params is not None:
+                # Create subdirectory for this mouse when experiment begins
+                os.makedirs(video_mouse_dir, exist_ok=True)
+                # Save video
+                self.out = cv2.VideoWriter(self.video_file, cv2.VideoWriter_fourcc(*'XVID'), 40, (frame_x, frame_y))
                 # Start experiment thread
                 self.experiment_running = True
                 self.start_button.setText("Stop Experiment")
@@ -580,10 +603,6 @@ class MainWindow(QMainWindow):
 
         fec_data, stim_data = self.fec_data, self.stim_data  # save collected data
 
-        # Get the current datetime
-        now = datetime.now()
-        timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")  # Format as 'YYYY-MM-DD_HH-MM-SS'
-
         # Create subdirectories for this mouse
         fec_mouse_dir = os.path.join(fec_dir, mouse_id)
         stim_mouse_dir = os.path.join(stim_dir, mouse_id)
@@ -592,11 +611,11 @@ class MainWindow(QMainWindow):
 
         # Save data to csv's
         if not fec_data.empty:
-            fec_csv = os.path.join(fec_mouse_dir, "{}_fec_{}.csv".format(mouse_id, timestamp))
+            fec_csv = os.path.join(fec_mouse_dir, "{}_fec_{}.csv".format(mouse_id, start_time))
             fec_data.to_csv(fec_csv, index=False)
             print(f"Saved FEC data to {fec_csv}")
         if not stim_data.empty:
-            stim_csv = os.path.join(stim_mouse_dir, "{}_stim_{}.csv".format(mouse_id, timestamp))
+            stim_csv = os.path.join(stim_mouse_dir, "{}_stim_{}.csv".format(mouse_id, start_time))
             stim_data.to_csv(stim_csv, index=False)
             print(f"Saved stim data to {stim_csv}")
         
@@ -661,13 +680,17 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
-        if self.experiment_thread.isRunning():
-            self.experiment_thread.stop()
-            self.experiment_thread.wait()
-        self.camera_thread.stop()
-        self.camera_thread.stop()
+        try:
+            if self.experiment_thread.isRunning():
+                self.experiment_thread.stop()
+                self.experiment_thread.wait()
 
-        super().closeEvent(event)
+            if self.camera_thread.isRunning():
+                self.camera_thread.stop()
+                self.camera_thread.wait()
+        except Exception as e:
+            print(f"Error stopping threads: {e}")
+
         super().closeEvent(event)
 
 if __name__ == "__main__":
