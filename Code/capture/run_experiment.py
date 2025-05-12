@@ -19,11 +19,9 @@ from asynchronous_grab_opencv import *
 
 # Initialize global constants
 num_trials = 110  # number of trials to run
-# ISI = 0.25  # 250 ms inter-stimulus interval
 ITI = 12.5  # 12.5 second (on average) inter-trial interval
 arduino_port = 'COM4'  # '/dev/cu.usbserial-01C60315'  # Match this to Arduino's port, check by running 'ls /dev/cu.*' in terminal on Mac
 baud_rate = 9600  # arduino baud rate
-# frequency = 880.0  # Unused variable # Frequency in Hz (A5) of CS
 tone_duration = 0.28     # Duration in seconds of CS
 sample_rate = 44100  # Sample rate in Hz of CS
 binary_threshold = 55  # Any pixel value in the processed image below this value will be set to 0, and above this value will be set to 1
@@ -206,6 +204,7 @@ class MainWindow(QMainWindow):
         self.start_button = QPushButton("Start Experiment")
         self.start_button.clicked.connect(self.start_experiment)
         self.layout.addWidget(self.start_button)
+        self.stop_pressed = False  # keep track of whether experiment was stopped early
 
         # Integrate CameraThread
         self.camera_thread = CameraThread()
@@ -578,15 +577,24 @@ class MainWindow(QMainWindow):
         now = datetime.now()
         timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")  # Format as 'YYYY-MM-DD_HH-MM-SS'
 
+        # Create subdirectories for this mouse
+        fec_mouse_dir = os.path.join(fec_dir, mouse_id)
+        stim_mouse_dir = os.path.join(stim_dir, mouse_id)
+        os.makedirs(fec_mouse_dir, exist_ok=True)
+        os.makedirs(stim_mouse_dir, exist_ok=True)
+
         # Save data to csv's
         if not fec_data.empty:
-            fec_csv = os.path.join(fec_dir, "mouse_{}_fec_{}.csv".format(mouse_id, timestamp))
+            fec_csv = os.path.join(fec_mouse_dir, "{}_fec_{}.csv".format(mouse_id, timestamp))
             fec_data.to_csv(fec_csv, index=False)
             print(f"Saved FEC data to {fec_csv}")
         if not stim_data.empty:
-            stim_csv = os.path.join(stim_dir, "mouse_{}_stim_{}.csv".format(mouse_id, timestamp))
+            stim_csv = os.path.join(stim_mouse_dir, "{}_stim_{}.csv".format(mouse_id, timestamp))
             stim_data.to_csv(stim_csv, index=False)
             print(f"Saved stim data to {stim_csv}")
+        
+        if not self.stop_pressed:
+            self.stop_pressed = True
 
     def ensure_stability(self, i):
         """Check if FEC stays above 0.75 for at least 200 ms
@@ -630,7 +638,8 @@ class MainWindow(QMainWindow):
         print(f"Trial {trial_num} completed.")
 
     def on_experiment_finished(self):
-        self.stop_experiment()  # Stop experiment gracefully and save data
+        if not self.stop_pressed:
+            self.stop_experiment()  # Stop experiment gracefully and save data
         
         print("Experiment finished!")
 
