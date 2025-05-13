@@ -25,7 +25,7 @@ baud_rate = 9600  # arduino baud rate
 tone_duration = 0.28     # Duration in seconds of CS
 sample_rate = 44100  # Sample rate in Hz of CS
 binary_threshold = 55  # Any pixel value in the processed image below this value will be set to 0, and above this value will be set to 1
-stability_threshold = 0.7  # FEC value that eye must stay below for at least 200 ms before starting next trial, ~75% oprn
+stability_threshold = 0.6  # FEC value that eye must stay below for at least 200 ms before starting next trial, ~75% oprn
 stability_duration = 0.2  # 200 ms in seconds of stability check
 training = True  # TODO: finish implementation; If True, run 10 trials with no air puff
 
@@ -568,13 +568,13 @@ class MainWindow(QMainWindow):
             self.fec_value = lighter_pixels / total_pixels if total_pixels > 0 else 0
 
             # Normalize self.fec_value to value b/w 0 and 100; 0 --> fully open, 100 --> fully closed
-            if self.fec_value <= 0.6:
+            if self.fec_value <= 0.5:
                 return 0
             elif self.fec_value >= 0.9:
                 return 100
             else:
-                # Normalize from [0.6, 0.9] to [0, 100]
-                return int((self.fec_value - 0.6) / (0.9 - 0.5) * 100)
+                # Normalize from [0.5, 0.9] to [0, 100]
+                return int((self.fec_value - 0.5) / (0.9 - 0.5) * 100)
     
     def start_experiment(self):
         if not self.experiment_running:
