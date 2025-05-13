@@ -505,10 +505,10 @@ class MainWindow(QMainWindow):
                 self.rect_params = None
     
     def update_frame(self, frame):
-
-        if self.experiment_running:
-            if self.out:
-                self.out.write(frame)
+        # # TODO: Only save video while trial running
+        # if self.experiment_running:
+        #     if self.out:
+        #         self.out.write(frame)
 
         if self.top_left_zoom and self.bottom_right_zoom:  # If rectangle has been drawn
             # Crop the region of interest
