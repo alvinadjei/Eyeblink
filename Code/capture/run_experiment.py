@@ -41,7 +41,7 @@ time.sleep(2)  # Wait for the connection to establish
 mouse_id = input("Please input the mouse's ID: ")
 
 # Initialize video subdirectory var
-video_mouse_dir = os.path.join(video_dir, mouse_id)
+video_mouse_dir = os.path.join(video_dir, mouse_id, start_time)
 frame_x, frame_y = 1280, 960  # Frame dimensions
 
 print('Successfully established serial connection to arduino.')
@@ -75,7 +75,7 @@ class CameraThread(QThread):
 
                     while self.running:
                         frame = handler.get_image()
-                        frame_x, frame_y = frame.shape[1], frame.shape[0]
+                        # frame_x, frame_y = frame.shape[1], frame.shape[0]
                         self.frame_ready.emit(frame)
 
                 finally:
@@ -226,7 +226,8 @@ class MainWindow(QMainWindow):
         # Data
         self.fec_data = pd.DataFrame(columns=["Timestamp", "Trial #", "FEC"])
         self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff"])
-        self.trial_num = 0
+        self.trial_num = 1
+        self.last_trial_num = 0
         
         # Ellipse data
         self.drawing_ellipse = False
@@ -252,7 +253,7 @@ class MainWindow(QMainWindow):
         self.experiment_running = False
 
         # Initialize video file
-        self.video_file = os.path.join(video_mouse_dir, f"{mouse_id}_{start_time}.avi")
+        self.video_file = os.path.join(video_mouse_dir, f"trial_{self.trial_num}.avi")
         self.out = None  # VideoWriter object for saving video
 
         # Integrate ExperimentThread
@@ -505,10 +506,15 @@ class MainWindow(QMainWindow):
                 self.rect_params = None
     
     def update_frame(self, frame):
-        # # TODO: Only save video while trial running
-        # if self.experiment_running:
-        #     if self.out:
-        #         self.out.write(frame)
+        # Only save video while trial running
+        if self.experiment_running and self.trial_in_progress:
+            if self.trial_num > self.last_trial_num:
+                self.video_file = os.path.join(video_mouse_dir, f"trial_{self.trial_num}.avi")  # Update video file name
+                self.out = cv2.VideoWriter(self.video_file, cv2.VideoWriter_fourcc(*'XVID'), 40, (frame_x, frame_y))  # Reinitialize VideoWriter
+                self.last_trial_num = self.trial_num  # Increment last trial number
+            # # Save video
+            # if self.out:
+            #     self.out.write(frame)
 
         if self.top_left_zoom and self.bottom_right_zoom:  # If rectangle has been drawn
             # Crop the region of interest
