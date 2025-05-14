@@ -40,8 +40,10 @@ time.sleep(2)  # Wait for the connection to establish
 # Mouse ID
 mouse_id = input("Please input the mouse's ID: ")
 
-# Initialize video subdirectory var
-video_mouse_dir = os.path.join(video_dir, mouse_id, start_time)
+# Initialize video consts
+vid_dur = 5  # Duration of each video in seconds
+adjusted_vid_dur = vid_dur + 3  # actual vid is about 3 sec shorter than vid_dur so we add 3 here, not sure why this is happening
+video_mouse_dir = os.path.join(video_dir, mouse_id, start_time)  # Initialize video subdirectory var
 frame_x, frame_y = 1280, 960  # Frame dimensions
 
 print('Successfully established serial connection to arduino.')
@@ -120,7 +122,6 @@ class ExperimentThread(QThread):
                 # Run a single trial
                 self.run_trial(i)
 
-                self.trial_completed.emit(self.trial_num)
 
         except Exception as e:
             self.stability_error.emit(str(e))
@@ -137,6 +138,8 @@ class ExperimentThread(QThread):
         self.trial_started.emit(self.trial_num)  # Signal to `MainWindow` that the trial has started
         time.sleep(0.05)  # Simulate pre-CS timing
         cs_timestamp = window.stimuli(self.trial_has_puff)  # Execute CS and US        
+        # Save video
+        self.trial_completed.emit(self.trial_num)
 
         if cs_timestamp is not None:
             # Save stimulus timestamps to dataframe
@@ -148,7 +151,8 @@ class ExperimentThread(QThread):
             self.stim_collector.emit(self.stim_data)
 
         if self.running:
-            time.sleep(ITI + random.gauss(0,3))  # Inter-trial interval (mu = 12.5, sigma = 3)
+            adjusted_ITI = max(0, ITI - adjusted_vid_dur + random.gauss(0,3))
+            time.sleep(adjusted_ITI)  # Inter-trial interval (mu = 12.5, sigma = 3)
 
     def stop(self):
         """Gracefully stop the thread"""
@@ -512,9 +516,9 @@ class MainWindow(QMainWindow):
                 self.video_file = os.path.join(video_mouse_dir, f"trial_{self.trial_num}.avi")  # Update video file name
                 self.out = cv2.VideoWriter(self.video_file, cv2.VideoWriter_fourcc(*'XVID'), 40, (frame_x, frame_y))  # Reinitialize VideoWriter
                 self.last_trial_num = self.trial_num  # Increment last trial number
-            # # Save video
-            # if self.out:
-            #     self.out.write(frame)
+            # Save video
+            if self.out:
+                self.out.write(frame)
 
         if self.top_left_zoom and self.bottom_right_zoom:  # If rectangle has been drawn
             # Crop the region of interest
@@ -656,6 +660,7 @@ class MainWindow(QMainWindow):
             if response == 'd':  # check for valid confirmation message
                 timestamp = pd.Timestamp.now()     # Record when response is received, arduino code has completed execution
                 time.sleep(0.05)  # Wait for air puff to complete
+                time.sleep(adjusted_vid_dur)  # Let video record for 5 seconds
                 return timestamp
             else:
                 raise ValueError(f"Unexpected response from Arduino: {response}")
