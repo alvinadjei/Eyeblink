@@ -39,11 +39,15 @@ time.sleep(2)  # Wait for the connection to establish
 
 # Mouse ID
 mouse_id = input("Please input the mouse's ID: ")
-first_experiment_of_day = input("Is this the experiment of the day for this mouse? (y/n): ").strip().lower()
+first_experiment_of_day = input("Is this the first experiment of the day for this mouse? (y/n): ").strip().lower()
 if first_experiment_of_day == 'y':
     first_experiment_of_day = True
+    print('Commencing 1st experiment of the day')
 else:
     first_experiment_of_day = False
+    print('Commencing subsequent experiment')
+if not first_experiment_of_day:
+    num_trials = int(input("How many trials would you like to run?"))
 
 
 # Initialize video consts
@@ -689,7 +693,7 @@ class MainWindow(QMainWindow):
 
     def on_trial_completed(self, trial_num):
         self.trial_in_progress = False
-        print(f"Trial {trial_num} completed.")
+        print(f"Trial {trial_num} of {num_trials} completed.")
 
     def on_experiment_finished(self):
         # Show video saving error if one occurred
