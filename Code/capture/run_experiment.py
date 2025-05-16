@@ -39,6 +39,12 @@ time.sleep(2)  # Wait for the connection to establish
 
 # Mouse ID
 mouse_id = input("Please input the mouse's ID: ")
+first_trial_of_day = input("Is this the experiment of the day for this mouse? (y/n): ").strip().lower()
+if first_trial_of_day == 'y':
+    first_trial_of_day = True
+else:
+    first_trial_of_day = False
+
 
 # Initialize video consts
 vid_dur = 5  # Duration of each video in seconds
@@ -105,7 +111,14 @@ class ExperimentThread(QThread):
     def run(self):
         """Main experiment loop"""
         self.running = True
-        no_puff_trials = random.sample(range(10, self.num_trials), 10)  # Randomly select 10 trials to not have a puff
+        # Randomly select 10 trials to not have a puff
+        no_puff_trials = []  # List to store trials without a puff
+        if first_trial_of_day:
+            start = 1
+        else:
+            start = 0
+        for i in range(start, num_trials // 10 + 1):
+            no_puff_trials.append(random.randint(i * 10 + 1, i * 10 + 10))
         try:
             for i in range(self.num_trials):
                 if not self.running:
