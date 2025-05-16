@@ -39,11 +39,11 @@ time.sleep(2)  # Wait for the connection to establish
 
 # Mouse ID
 mouse_id = input("Please input the mouse's ID: ")
-first_trial_of_day = input("Is this the experiment of the day for this mouse? (y/n): ").strip().lower()
-if first_trial_of_day == 'y':
-    first_trial_of_day = True
+first_experiment_of_day = input("Is this the experiment of the day for this mouse? (y/n): ").strip().lower()
+if first_experiment_of_day == 'y':
+    first_experiment_of_day = True
 else:
-    first_trial_of_day = False
+    first_experiment_of_day = False
 
 
 # Initialize video consts
@@ -113,7 +113,7 @@ class ExperimentThread(QThread):
         self.running = True
         # Randomly select 10 trials to not have a puff
         no_puff_trials = []  # List to store trials without a puff
-        if first_trial_of_day:
+        if first_experiment_of_day:
             start = 1
         else:
             start = 0
@@ -272,6 +272,7 @@ class MainWindow(QMainWindow):
         # Initialize video file
         self.video_file = os.path.join(video_mouse_dir, f"trial_{self.trial_num}.avi")
         self.out = None  # VideoWriter object for saving video
+        self.video_error = None  # If not none, some error occurred while trying to save video (e.g. ran out of storage)
 
         # Integrate ExperimentThread
         self.experiment_thread = ExperimentThread()
@@ -531,7 +532,10 @@ class MainWindow(QMainWindow):
                 self.last_trial_num = self.trial_num  # Increment last trial number
             # Save video
             if self.out:
-                self.out.write(frame)
+                try:
+                    self.out.write(frame)
+                except Exception as e:
+                    self.video_error = e
 
         if self.top_left_zoom and self.bottom_right_zoom:  # If rectangle has been drawn
             # Crop the region of interest
@@ -688,6 +692,10 @@ class MainWindow(QMainWindow):
         print(f"Trial {trial_num} completed.")
 
     def on_experiment_finished(self):
+        # Show video saving error if one occurred
+        if self.video_error:
+            print(f"Error saving video: {self.video_error}")
+
         if not self.stop_pressed:
             self.stop_experiment()  # Stop experiment gracefully and save data
         
@@ -704,6 +712,7 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
+        # Gracefully stop threads
         try:
             if self.experiment_thread.isRunning():
                 self.experiment_thread.stop()
