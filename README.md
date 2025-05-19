@@ -78,8 +78,9 @@ Vimba X's Python API, VmbPy.
     Adjust global constants like <code>num_trials</code> (number of trials in an experiment) and <code>ITI</code> (inter-trial interval)
     to your liking.
   </li>
-  <li>Run <code>Code/capture/run_experiment.py</code>.</li>
+  <li>Navigate to the root directory of this project in the terminal, activate the <code>.venv-wind</code> virtual environment, then press the run button in your code editor to run the script.</li>
   <li>In the terminal, you will be prompted to enter the mouse's ID. Enter an ID of your choice and press Enter.</li>
+  <li>Next, you will be asked if this is the first recording of the day for this mouse. If you enter 'y' for yes, you will continue to the next steps where you can run the experiment for <code>num_trials</code> iterations. If you enter 'n' for no, you will then be asked how many trials you would like to run on the mouse. Once you enter this, the following steps will be the same.</li>
   <li>
     Now, the GUI will open. If the window doesn't appear, check the app taskbar/dock for a new app running. The window should look something like this:
     <p>
