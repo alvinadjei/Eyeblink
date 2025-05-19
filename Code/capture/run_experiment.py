@@ -27,7 +27,7 @@ sample_rate = 44100  # Sample rate in Hz of CS
 binary_threshold = 55  # Any pixel value in the processed image below this value will be set to 0, and above this value will be set to 1
 stability_threshold = 0.6  # FEC value that eye must stay below for at least 200 ms before starting next trial, ~75% oprn
 stability_duration = 0.2  # 200 ms in seconds of stability check
-training = True  # TODO: finish implementation; If True, run 10 trials with no air puff
+training = None  # TODO: finish implementation; If True, run 10 trials with no air puff
 
 # Get the current datetime (used in saved-data file names)
 now = datetime.now()
@@ -39,6 +39,9 @@ time.sleep(2)  # Wait for the connection to establish
 
 # Mouse ID
 mouse_id = input("Please input the mouse's ID: ")
+training = input("Is this a training session? (y/n): ").strip().lower()
+if training == 'y':
+    training = True
 first_experiment_of_day = input("Is this the first experiment of the day for this mouse? (y/n): ").strip().lower()
 if first_experiment_of_day == 'y':
     first_experiment_of_day = True
@@ -109,20 +112,40 @@ class ExperimentThread(QThread):
         self.num_trials = num_trials
         self.trial_num = 0
         self.trial_has_puff = True
+        self.trial_tone = 10  # default tone in kHz
         self.running = False
-        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff"])
+        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff", "Tone"])
 
     def run(self):
         """Main experiment loop"""
         self.running = True
         # Randomly select 10 trials to not have a puff
         no_puff_trials = []  # List to store trials without a puff
+        generalization_trials = []  # List to store trials with a puff
         if first_experiment_of_day:
             start = 1
         else:
             start = 0
-        for i in range(start, num_trials // 10 + 1):
-            no_puff_trials.append(random.randint(i * 10 + 1, i * 10 + 10))
+        if training:
+            for i in range(start, num_trials // 10 + 1):
+                no_puff_trials.append(random.randint(i * 10 + 1, i * 10 + 10))
+        else:
+            for i in range(int(num_trials * 0.32)):
+                trial = random.randint(0, num_trials-1)
+                no_puff_trials.append(trial)
+                generalization_trials.append(trial)
+        
+        generalization_tones_list = []
+        generalization_tones = {}
+        for i in range(len(generalization_trials)):
+            generalization_tones_list += int(len(generalization_trials) * 0.33) * [2]
+            generalization_tones_list += int(len(generalization_trials) * 0.33) * [10]
+            generalization_tones_list += int(len(generalization_trials) * 0.33 + 1) * [20]
+            random.shuffle(generalization_tones_list)
+            
+            if len(generalization_trials) == len(generalization_tones_list):
+                generalization_tones = dict(zip(generalization_trials, generalization_tones_list))
+            
         try:
             for i in range(self.num_trials):
                 if not self.running:
@@ -131,6 +154,8 @@ class ExperimentThread(QThread):
                 if self.trial_num in no_puff_trials:
                     self.trial_has_puff = False  # Randomly select 10 trials to not have a puff
                     print(f"Trial {i+1} will not have a puff.")
+                    if self.trial_num in generalization_tones:
+                        self.trial_tone = generalization_tones[self.trial_num]
                 else:
                     self.trial_has_puff = True  # Trial will have a puff
                 # Update trial number
@@ -154,7 +179,7 @@ class ExperimentThread(QThread):
         window.ensure_stability(i)  # Make sure to use `MainWindow` methods safely
         self.trial_started.emit(self.trial_num)  # Signal to `MainWindow` that the trial has started
         time.sleep(0.05)  # Simulate pre-CS timing
-        cs_timestamp = window.stimuli(self.trial_has_puff)  # Execute CS and US        
+        cs_timestamp = window.stimuli(self.trial_has_puff, self.trial_tone)  # Execute CS and US        
         # Save video
         self.trial_completed.emit(self.trial_num)
 
@@ -162,7 +187,7 @@ class ExperimentThread(QThread):
             # Save stimulus timestamps to dataframe
             self.stim_data = pd.concat([
                 self.stim_data,
-                pd.DataFrame([[i+1, cs_timestamp, self.trial_has_puff]], columns=self.stim_data.columns)
+                pd.DataFrame([[i+1, cs_timestamp, self.trial_has_puff, self.trial_tone]], columns=self.stim_data.columns)
             ], ignore_index=True)
 
             self.stim_collector.emit(self.stim_data)
@@ -246,7 +271,7 @@ class MainWindow(QMainWindow):
 
         # Data
         self.fec_data = pd.DataFrame(columns=["Timestamp", "Trial #", "FEC"])
-        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff"])
+        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff", "Tone"])
         self.trial_num = 1
         self.last_trial_num = 0
         
@@ -673,8 +698,11 @@ class MainWindow(QMainWindow):
             # Check every 10 ms
             time.sleep(0.01)
     
-    def stimuli(self, has_puff):
-        message = b'T' if has_puff else b'F'
+    def stimuli(self, has_puff, tone):
+        if has_puff:
+            message = b'T'
+        else: 
+            message = f"F{tone}\n".encode()
         if self.experiment_running:
             ser.write(message)  # send 'T' command to Arduino to trigger trial
             response = ser.readline().decode().strip()  # Read confirmation

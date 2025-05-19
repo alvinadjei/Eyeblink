@@ -24,6 +24,9 @@ int brightness_1 = 255; // Side IR LED
 int brightness_2 = 255; // Top IR LED
 int brightness_3 = 255; // Head-on IR LED
 
+// Default buzzer frequency
+int freq = 10000;
+
 // Keep track of whether neopixels are on or off
 bool pixOn = true;
 
@@ -131,11 +134,19 @@ void loop() {
       }
     }
     
+    char flag = Serial.read();
     // Command to run trial
-    if (command == 'T' || command == 'F') {
+    if (flag == 'T' || flag == 'F') {
       // Conditioned stimulus
       Serial.println("d");
-      tone(BUZZER_PIN, 10000);
+      if (flag == 'F') {
+        // Wait for the rest of the int to arrive
+        freq = Serial.parseInt() * 1000;  // Reads the number after 'F'
+      } else {
+        freq = 10000;
+      }
+      tone(BUZZER_PIN, freq);
+      
       delay(ISI); // Wait for ISI before starting US
 
       // If command is 'F', don't do airpuff
