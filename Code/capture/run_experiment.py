@@ -42,6 +42,8 @@ mouse_id = input("Please input the mouse's ID: ")
 training = input("Is this a training session? (y/n): ").strip().lower()
 if training == 'y':
     training = True
+else:
+    training = False
 first_experiment_of_day = input("Is this the first experiment of the day for this mouse? (y/n): ").strip().lower()
 if first_experiment_of_day == 'y':
     first_experiment_of_day = True
@@ -137,14 +139,17 @@ class ExperimentThread(QThread):
         
         generalization_tones_list = []
         generalization_tones = {}
-        for i in range(len(generalization_trials)):
-            generalization_tones_list += int(len(generalization_trials) * 0.33) * [2]
-            generalization_tones_list += int(len(generalization_trials) * 0.33) * [10]
-            generalization_tones_list += int(len(generalization_trials) * 0.33 + 1) * [20]
-            random.shuffle(generalization_tones_list)
-            
-            if len(generalization_trials) == len(generalization_tones_list):
-                generalization_tones = dict(zip(generalization_trials, generalization_tones_list))
+        if not training:
+            for i in range(len(generalization_trials)):
+                generalization_tones_list += int(len(generalization_trials) * 0.33) * [2]
+                generalization_tones_list += int(len(generalization_trials) * 0.33) * [10]
+                generalization_tones_list += int(len(generalization_trials) * 0.33 + 1) * [20]
+                random.shuffle(generalization_tones_list)
+                print(generalization_trials)
+                print(generalization_tones)
+                
+                if len(generalization_trials) == len(generalization_tones_list):
+                    generalization_tones = dict(zip(generalization_trials, generalization_tones_list))
             
         try:
             for i in range(self.num_trials):
@@ -686,7 +691,7 @@ class MainWindow(QMainWindow):
         print("Checking condition: FEC stays below 0.25 for at least 200 ms")
 
         while self.experiment_running:
-            if self.fec_value < stability_threshold:  # If eye is >= 75% open (or < 25% closed)
+            if self.fec_value <= stability_threshold:  # If eye is >= 75% open (or <= 25% closed)
                 if start_time is None:
                     start_time = time.time()
                 elif time.time() - start_time >= stability_duration:  # Break loop if eyes stays open longer than 200 ms
@@ -700,7 +705,7 @@ class MainWindow(QMainWindow):
     
     def stimuli(self, has_puff, tone):
         if has_puff:
-            message = b'T'
+            message = f"T{tone}\n".encode()
         else: 
             message = f"F{tone}\n".encode()
         if self.experiment_running:

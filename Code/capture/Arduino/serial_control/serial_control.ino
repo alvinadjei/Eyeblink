@@ -133,13 +133,12 @@ void loop() {
         Serial.println(-1);
       }
     }
-    
-    char flag = Serial.read();
+
     // Command to run trial
-    if (flag == 'T' || flag == 'F') {
+    if (command == 'T' || command == 'F') {
       // Conditioned stimulus
       Serial.println("d");
-      if (flag == 'F') {
+      if (command == 'F') {
         // Wait for the rest of the int to arrive
         freq = Serial.parseInt() * 1000;  // Reads the number after 'F'
       } else {
