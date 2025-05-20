@@ -18,7 +18,7 @@ fec_dir, stim_dir, video_dir = os.path.join("Data", "fec"), os.path.join("Data",
 from asynchronous_grab_opencv import *
 
 # Initialize global constants
-num_trials = 110  # number of trials to run
+num_trials = 110  # number of trials to run, keep as a multiple of 110
 ITI = 12.5  # 12.5 second (on average) inter-trial interval
 arduino_port = 'COM4'  # '/dev/cu.usbserial-01C60315'  # Match this to Arduino's port, check by running 'ls /dev/cu.*' in terminal on Mac
 baud_rate = 9600  # arduino baud rate
@@ -27,7 +27,8 @@ sample_rate = 44100  # Sample rate in Hz of CS
 binary_threshold = 55  # Any pixel value in the processed image below this value will be set to 0, and above this value will be set to 1
 stability_threshold = 0.6  # FEC value that eye must stay below for at least 200 ms before starting next trial, ~75% oprn
 stability_duration = 0.2  # 200 ms in seconds of stability check
-training = None  # TODO: finish implementation; If True, run 10 trials with no air puff
+training = True  # If True, run 10 trials with no air puff; if false, run generalization experiment
+first_experiment_of_day = True
 
 # Get the current datetime (used in saved-data file names)
 now = datetime.now()
@@ -39,21 +40,58 @@ time.sleep(2)  # Wait for the connection to establish
 
 # Mouse ID
 mouse_id = input("Please input the mouse's ID: ")
-training = input("Is this a training session? (y/n): ").strip().lower()
-if training == 'y':
+training_query = input("Is this a training session? (y/n): ").strip().lower()
+if training_query == 'y':
     training = True
+    # For training runs, user can split up into multiple experiments in a day where num_trials is a multiple of 10 if mouse is uncooperative
+    first_experiment_of_day_query = input("Is this the first experiment of the day for this mouse? (y/n): ").strip().lower()
+    if first_experiment_of_day_query == 'y':
+        first_experiment_of_day = True
+        print('Commencing 1st experiment of the day')
+    else:
+        first_experiment_of_day = False
+        num_trials = int(input("How many trials would you like to run?\n"))
+        print('Commencing subsequent experiment')
 else:
+    # For generalization runs, they need to be done all at once
     training = False
-first_experiment_of_day = input("Is this the first experiment of the day for this mouse? (y/n): ").strip().lower()
-if first_experiment_of_day == 'y':
-    first_experiment_of_day = True
-    print('Commencing 1st experiment of the day')
-else:
-    first_experiment_of_day = False
-    print('Commencing subsequent experiment')
-if not first_experiment_of_day:
-    num_trials = int(input("How many trials would you like to run?"))
 
+# Select no puff and/or generalization trials
+no_puff_trials = []  # List to store trials without a puff
+generalization_trials = []  # List to store generalization otrials
+if first_experiment_of_day:
+    start = 1
+else:
+    start = 0
+if training:
+    # Randomly select 10 trials to not have a puff
+    for i in range(start, num_trials // 10 + 1):
+        no_puff_trials.append(random.randint(i * 10 + 1, i * 10 + 10))
+else:
+    for i in range(round(0.36364*num_trials)):
+        trial = random.randint(1, num_trials)
+        while trial in no_puff_trials:
+            trial = random.randint(1, num_trials)
+        no_puff_trials.append(trial)
+        generalization_trials.append(trial)
+
+generalization_tones_list = []
+generalization_tones = {}
+if not training:
+    for i in range(len(generalization_trials)):
+        generalization_tones_list += int(len(generalization_trials) * 0.2) * [2]
+        generalization_tones_list += int(len(generalization_trials) * 0.2) * [6]
+        generalization_tones_list += int(len(generalization_trials) * 0.2) * [10]
+        generalization_tones_list += int(len(generalization_trials) * 0.2) * [14]
+        generalization_tones_list += int(len(generalization_trials) * 0.2) * [20]
+        random.shuffle(generalization_tones_list)
+        
+        if len(generalization_trials) == len(generalization_tones_list):
+            generalization_tones = dict(zip(generalization_trials, generalization_tones_list))
+    
+    print(len(generalization_trials))
+    print(generalization_trials)
+    print(generalization_tones)
 
 # Initialize video consts
 vid_dur = 5  # Duration of each video in seconds
@@ -121,36 +159,7 @@ class ExperimentThread(QThread):
     def run(self):
         """Main experiment loop"""
         self.running = True
-        # Randomly select 10 trials to not have a puff
-        no_puff_trials = []  # List to store trials without a puff
-        generalization_trials = []  # List to store trials with a puff
-        if first_experiment_of_day:
-            start = 1
-        else:
-            start = 0
-        if training:
-            for i in range(start, num_trials // 10 + 1):
-                no_puff_trials.append(random.randint(i * 10 + 1, i * 10 + 10))
-        else:
-            for i in range(int(num_trials * 0.32)):
-                trial = random.randint(0, num_trials-1)
-                no_puff_trials.append(trial)
-                generalization_trials.append(trial)
         
-        generalization_tones_list = []
-        generalization_tones = {}
-        if not training:
-            for i in range(len(generalization_trials)):
-                generalization_tones_list += int(len(generalization_trials) * 0.33) * [2]
-                generalization_tones_list += int(len(generalization_trials) * 0.33) * [10]
-                generalization_tones_list += int(len(generalization_trials) * 0.33 + 1) * [20]
-                random.shuffle(generalization_tones_list)
-                print(generalization_trials)
-                print(generalization_tones)
-                
-                if len(generalization_trials) == len(generalization_tones_list):
-                    generalization_tones = dict(zip(generalization_trials, generalization_tones_list))
-            
         try:
             for i in range(self.num_trials):
                 if not self.running:
@@ -161,14 +170,15 @@ class ExperimentThread(QThread):
                     print(f"Trial {i+1} will not have a puff.")
                     if self.trial_num in generalization_tones:
                         self.trial_tone = generalization_tones[self.trial_num]
+                        print(f"Trial {i+1} freq: {self.trial_tone}kHz")
                 else:
                     self.trial_has_puff = True  # Trial will have a puff
+                    self.trial_tone = 10  # If not specified, trial tone should be 10khz
                 # Update trial number
                 self.trial_num = i + 1
 
                 # Run a single trial
                 self.run_trial(i)
-
 
         except Exception as e:
             self.stability_error.emit(str(e))
@@ -567,7 +577,8 @@ class MainWindow(QMainWindow):
             # Save video
             if self.out:
                 try:
-                    self.out.write(frame)
+                    # self.out.write(frame)
+                    pass  # TODO: free up storage
                 except Exception as e:
                     self.video_error = e
 
@@ -705,11 +716,11 @@ class MainWindow(QMainWindow):
     
     def stimuli(self, has_puff, tone):
         if has_puff:
-            message = f"T{tone}\n".encode()
+            command = f"T{tone}\n".encode()
         else: 
-            message = f"F{tone}\n".encode()
+            command = f"F{tone}\n".encode()
         if self.experiment_running:
-            ser.write(message)  # send 'T' command to Arduino to trigger trial
+            ser.write(command)  # send command to Arduino to trigger trial
             response = ser.readline().decode().strip()  # Read confirmation
             if response == 'd':  # check for valid confirmation message
                 timestamp = pd.Timestamp.now()     # Record when response is received, arduino code has completed execution
