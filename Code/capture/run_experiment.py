@@ -56,6 +56,11 @@ else:
     # For generalization runs, they need to be done all at once
     training = False
 
+if training:
+    mode = "training"
+else:
+    mode = "generalization"
+
 # Select no puff and/or generalization trials
 no_puff_trials = []  # List to store trials without a puff
 generalization_trials = []  # List to store generalization otrials
@@ -69,11 +74,14 @@ if training:
         no_puff_trials.append(random.randint(i * 10 + 1, i * 10 + 10))
 else:
     for i in range(round(0.36364*num_trials)):
-        trial = random.randint(1, num_trials)
+        trial = random.randint(0, num_trials-1)
         while trial in no_puff_trials:
-            trial = random.randint(1, num_trials)
+            trial = random.randint(0, num_trials-1)
         no_puff_trials.append(trial)
-        generalization_trials.append(trial)
+        generalization_trials.append(trial + 1)
+    
+    no_puff_trials.sort()
+    generalization_trials.sort()
 
 generalization_tones_list = []
 generalization_tones = {}
@@ -89,14 +97,13 @@ if not training:
         if len(generalization_trials) == len(generalization_tones_list):
             generalization_tones = dict(zip(generalization_trials, generalization_tones_list))
     
-    print(len(generalization_trials))
     print(generalization_trials)
     print(generalization_tones)
 
 # Initialize video consts
 vid_dur = 5  # Duration of each video in seconds
 adjusted_vid_dur = vid_dur + 3  # actual vid is about 3 sec shorter than vid_dur so we add 3 here, not sure why this is happening
-video_mouse_dir = os.path.join(video_dir, mouse_id, start_time)  # Initialize video subdirectory var
+video_mouse_dir = os.path.join(video_dir, mouse_id, mode, start_time)  # Initialize video subdirectory var
 frame_x, frame_y = 1280, 960  # Frame dimensions
 
 print('Successfully established serial connection to arduino.')
@@ -168,8 +175,8 @@ class ExperimentThread(QThread):
                 if self.trial_num in no_puff_trials:
                     self.trial_has_puff = False  # Randomly select 10 trials to not have a puff
                     print(f"Trial {i+1} will not have a puff.")
-                    if self.trial_num in generalization_tones:
-                        self.trial_tone = generalization_tones[self.trial_num]
+                    if self.trial_num + 1 in generalization_tones:
+                        self.trial_tone = generalization_tones[self.trial_num + 1]
                         print(f"Trial {i+1} freq: {self.trial_tone}kHz")
                 else:
                     self.trial_has_puff = True  # Trial will have a puff
@@ -572,7 +579,7 @@ class MainWindow(QMainWindow):
         if self.experiment_running and self.trial_in_progress:
             if self.trial_num > self.last_trial_num:
                 self.video_file = os.path.join(video_mouse_dir, f"trial_{self.trial_num}.avi")  # Update video file name
-                self.out = cv2.VideoWriter(self.video_file, cv2.VideoWriter_fourcc(*'XVID'), 40, (frame_x, frame_y))  # Reinitialize VideoWriter
+                # self.out = cv2.VideoWriter(self.video_file, cv2.VideoWriter_fourcc(*'XVID'), 40, (frame_x, frame_y))  # Reinitialize VideoWriter  # TODO free up storage
                 self.last_trial_num = self.trial_num  # Increment last trial number
             # Save video
             if self.out:
@@ -652,10 +659,10 @@ class MainWindow(QMainWindow):
         if not self.experiment_running:
             
             if self.ellipse_params is not None:
-                # Create subdirectory for this mouse when experiment begins
-                os.makedirs(video_mouse_dir, exist_ok=True)
-                # Save video
-                self.out = cv2.VideoWriter(self.video_file, cv2.VideoWriter_fourcc(*'XVID'), 40, (frame_x, frame_y))
+                # # Create subdirectory for this mouse when experiment begins
+                # os.makedirs(video_mouse_dir, exist_ok=True)  # TODO: free up storage
+                # # Save video
+                # self.out = cv2.VideoWriter(self.video_file, cv2.VideoWriter_fourcc(*'XVID'), 40, (frame_x, frame_y))  # TODO: free up storage
                 # Start experiment thread
                 self.experiment_running = True
                 self.start_button.setText("Stop Experiment")
@@ -676,8 +683,8 @@ class MainWindow(QMainWindow):
         fec_data, stim_data = self.fec_data, self.stim_data  # save collected data
 
         # Create subdirectories for this mouse
-        fec_mouse_dir = os.path.join(fec_dir, mouse_id)
-        stim_mouse_dir = os.path.join(stim_dir, mouse_id)
+        fec_mouse_dir = os.path.join(fec_dir, mouse_id, mode)
+        stim_mouse_dir = os.path.join(stim_dir, mouse_id, mode)
         os.makedirs(fec_mouse_dir, exist_ok=True)
         os.makedirs(stim_mouse_dir, exist_ok=True)
 
