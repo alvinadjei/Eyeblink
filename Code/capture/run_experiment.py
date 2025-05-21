@@ -18,7 +18,7 @@ fec_dir, stim_dir, video_dir = os.path.join("Data", "fec"), os.path.join("Data",
 from asynchronous_grab_opencv import *
 
 # Initialize global constants
-num_trials = 110  # number of trials to run
+num_trials = 110  # number of trials to run, keep as a multiple of 110
 ITI = 12.5  # 12.5 second (on average) inter-trial interval
 arduino_port = 'COM4'  # '/dev/cu.usbserial-01C60315'  # Match this to Arduino's port, check by running 'ls /dev/cu.*' in terminal on Mac
 baud_rate = 9600  # arduino baud rate
@@ -27,7 +27,8 @@ sample_rate = 44100  # Sample rate in Hz of CS
 binary_threshold = 55  # Any pixel value in the processed image below this value will be set to 0, and above this value will be set to 1
 stability_threshold = 0.6  # FEC value that eye must stay below for at least 200 ms before starting next trial, ~75% oprn
 stability_duration = 0.2  # 200 ms in seconds of stability check
-training = True  # TODO: finish implementation; If True, run 10 trials with no air puff
+training = True  # If True, run 10 trials with no air puff; if false, run generalization experiment
+first_experiment_of_day = True
 
 # Get the current datetime (used in saved-data file names)
 now = datetime.now()
@@ -39,21 +40,70 @@ time.sleep(2)  # Wait for the connection to establish
 
 # Mouse ID
 mouse_id = input("Please input the mouse's ID: ")
-first_experiment_of_day = input("Is this the first experiment of the day for this mouse? (y/n): ").strip().lower()
-if first_experiment_of_day == 'y':
-    first_experiment_of_day = True
-    print('Commencing 1st experiment of the day')
+training_query = input("Is this a training session? (y/n): ").strip().lower()
+if training_query == 'y':
+    training = True
+    # For training runs, user can split up into multiple experiments in a day where num_trials is a multiple of 10 if mouse is uncooperative
+    first_experiment_of_day_query = input("Is this the first experiment of the day for this mouse? (y/n): ").strip().lower()
+    if first_experiment_of_day_query == 'y':
+        first_experiment_of_day = True
+        print('Commencing 1st experiment of the day')
+    else:
+        first_experiment_of_day = False
+        num_trials = int(input("How many trials would you like to run?\n"))
+        print('Commencing subsequent experiment')
 else:
-    first_experiment_of_day = False
-    print('Commencing subsequent experiment')
-if not first_experiment_of_day:
-    num_trials = int(input("How many trials would you like to run?"))
+    # For generalization runs, they need to be done all at once
+    training = False
 
+if training:
+    mode = "training"
+else:
+    mode = "generalization"
+
+# Select no puff and/or generalization trials
+no_puff_trials = []  # List to store trials without a puff
+generalization_trials = []  # List to store generalization otrials
+if first_experiment_of_day:
+    start = 1
+else:
+    start = 0
+if training:
+    # Randomly select 10 trials to not have a puff
+    for i in range(start, num_trials // 10 + 1):
+        no_puff_trials.append(random.randint(i * 10 + 1, i * 10 + 10))
+else:
+    for i in range(round(0.36364*num_trials)):
+        trial = random.randint(0, num_trials-1)
+        while trial in no_puff_trials:
+            trial = random.randint(0, num_trials-1)
+        no_puff_trials.append(trial)
+        generalization_trials.append(trial + 1)
+    
+    no_puff_trials.sort()
+    generalization_trials.sort()
+
+generalization_tones_list = []
+generalization_tones = {}
+if not training:
+    for i in range(len(generalization_trials)):
+        generalization_tones_list += int(len(generalization_trials) * 0.2) * [2]
+        generalization_tones_list += int(len(generalization_trials) * 0.2) * [6]
+        generalization_tones_list += int(len(generalization_trials) * 0.2) * [10]
+        generalization_tones_list += int(len(generalization_trials) * 0.2) * [14]
+        generalization_tones_list += int(len(generalization_trials) * 0.2) * [20]
+        random.shuffle(generalization_tones_list)
+        
+        if len(generalization_trials) == len(generalization_tones_list):
+            generalization_tones = dict(zip(generalization_trials, generalization_tones_list))
+    
+    print(generalization_trials)
+    print(generalization_tones)
 
 # Initialize video consts
 vid_dur = 5  # Duration of each video in seconds
 adjusted_vid_dur = vid_dur + 3  # actual vid is about 3 sec shorter than vid_dur so we add 3 here, not sure why this is happening
-video_mouse_dir = os.path.join(video_dir, mouse_id, start_time)  # Initialize video subdirectory var
+video_mouse_dir = os.path.join(video_dir, mouse_id, mode, start_time)  # Initialize video subdirectory var
 frame_x, frame_y = 1280, 960  # Frame dimensions
 
 print('Successfully established serial connection to arduino.')
@@ -109,20 +159,14 @@ class ExperimentThread(QThread):
         self.num_trials = num_trials
         self.trial_num = 0
         self.trial_has_puff = True
+        self.trial_tone = 10  # default tone in kHz
         self.running = False
-        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff"])
+        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff", "Tone"])
 
     def run(self):
         """Main experiment loop"""
         self.running = True
-        # Randomly select 10 trials to not have a puff
-        no_puff_trials = []  # List to store trials without a puff
-        if first_experiment_of_day:
-            start = 1
-        else:
-            start = 0
-        for i in range(start, num_trials // 10 + 1):
-            no_puff_trials.append(random.randint(i * 10 + 1, i * 10 + 10))
+        
         try:
             for i in range(self.num_trials):
                 if not self.running:
@@ -131,14 +175,17 @@ class ExperimentThread(QThread):
                 if self.trial_num in no_puff_trials:
                     self.trial_has_puff = False  # Randomly select 10 trials to not have a puff
                     print(f"Trial {i+1} will not have a puff.")
+                    if self.trial_num + 1 in generalization_tones:
+                        self.trial_tone = generalization_tones[self.trial_num + 1]
+                        print(f"Trial {i+1} freq: {self.trial_tone}kHz")
                 else:
                     self.trial_has_puff = True  # Trial will have a puff
+                    self.trial_tone = 10  # If not specified, trial tone should be 10khz
                 # Update trial number
                 self.trial_num = i + 1
 
                 # Run a single trial
                 self.run_trial(i)
-
 
         except Exception as e:
             self.stability_error.emit(str(e))
@@ -154,7 +201,7 @@ class ExperimentThread(QThread):
         window.ensure_stability(i)  # Make sure to use `MainWindow` methods safely
         self.trial_started.emit(self.trial_num)  # Signal to `MainWindow` that the trial has started
         time.sleep(0.05)  # Simulate pre-CS timing
-        cs_timestamp = window.stimuli(self.trial_has_puff)  # Execute CS and US        
+        cs_timestamp = window.stimuli(self.trial_has_puff, self.trial_tone)  # Execute CS and US        
         # Save video
         self.trial_completed.emit(self.trial_num)
 
@@ -162,7 +209,7 @@ class ExperimentThread(QThread):
             # Save stimulus timestamps to dataframe
             self.stim_data = pd.concat([
                 self.stim_data,
-                pd.DataFrame([[i+1, cs_timestamp, self.trial_has_puff]], columns=self.stim_data.columns)
+                pd.DataFrame([[i+1, cs_timestamp, self.trial_has_puff, self.trial_tone]], columns=self.stim_data.columns)
             ], ignore_index=True)
 
             self.stim_collector.emit(self.stim_data)
@@ -246,7 +293,7 @@ class MainWindow(QMainWindow):
 
         # Data
         self.fec_data = pd.DataFrame(columns=["Timestamp", "Trial #", "FEC"])
-        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff"])
+        self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff", "Tone"])
         self.trial_num = 1
         self.last_trial_num = 0
         
@@ -532,12 +579,13 @@ class MainWindow(QMainWindow):
         if self.experiment_running and self.trial_in_progress:
             if self.trial_num > self.last_trial_num:
                 self.video_file = os.path.join(video_mouse_dir, f"trial_{self.trial_num}.avi")  # Update video file name
-                self.out = cv2.VideoWriter(self.video_file, cv2.VideoWriter_fourcc(*'XVID'), 40, (frame_x, frame_y))  # Reinitialize VideoWriter
+                # self.out = cv2.VideoWriter(self.video_file, cv2.VideoWriter_fourcc(*'XVID'), 40, (frame_x, frame_y))  # Reinitialize VideoWriter  # TODO free up storage
                 self.last_trial_num = self.trial_num  # Increment last trial number
             # Save video
             if self.out:
                 try:
-                    self.out.write(frame)
+                    # self.out.write(frame)
+                    pass  # TODO: free up storage
                 except Exception as e:
                     self.video_error = e
 
@@ -611,10 +659,10 @@ class MainWindow(QMainWindow):
         if not self.experiment_running:
             
             if self.ellipse_params is not None:
-                # Create subdirectory for this mouse when experiment begins
-                os.makedirs(video_mouse_dir, exist_ok=True)
-                # Save video
-                self.out = cv2.VideoWriter(self.video_file, cv2.VideoWriter_fourcc(*'XVID'), 40, (frame_x, frame_y))
+                # # Create subdirectory for this mouse when experiment begins
+                # os.makedirs(video_mouse_dir, exist_ok=True)  # TODO: free up storage
+                # # Save video
+                # self.out = cv2.VideoWriter(self.video_file, cv2.VideoWriter_fourcc(*'XVID'), 40, (frame_x, frame_y))  # TODO: free up storage
                 # Start experiment thread
                 self.experiment_running = True
                 self.start_button.setText("Stop Experiment")
@@ -635,8 +683,8 @@ class MainWindow(QMainWindow):
         fec_data, stim_data = self.fec_data, self.stim_data  # save collected data
 
         # Create subdirectories for this mouse
-        fec_mouse_dir = os.path.join(fec_dir, mouse_id)
-        stim_mouse_dir = os.path.join(stim_dir, mouse_id)
+        fec_mouse_dir = os.path.join(fec_dir, mouse_id, mode)
+        stim_mouse_dir = os.path.join(stim_dir, mouse_id, mode)
         os.makedirs(fec_mouse_dir, exist_ok=True)
         os.makedirs(stim_mouse_dir, exist_ok=True)
 
@@ -661,7 +709,7 @@ class MainWindow(QMainWindow):
         print("Checking condition: FEC stays below 0.25 for at least 200 ms")
 
         while self.experiment_running:
-            if self.fec_value < stability_threshold:  # If eye is >= 75% open (or < 25% closed)
+            if self.fec_value <= stability_threshold:  # If eye is >= 75% open (or <= 25% closed)
                 if start_time is None:
                     start_time = time.time()
                 elif time.time() - start_time >= stability_duration:  # Break loop if eyes stays open longer than 200 ms
@@ -673,10 +721,13 @@ class MainWindow(QMainWindow):
             # Check every 10 ms
             time.sleep(0.01)
     
-    def stimuli(self, has_puff):
-        message = b'T' if has_puff else b'F'
+    def stimuli(self, has_puff, tone):
+        if has_puff:
+            command = f"T{tone}\n".encode()
+        else: 
+            command = f"F{tone}\n".encode()
         if self.experiment_running:
-            ser.write(message)  # send 'T' command to Arduino to trigger trial
+            ser.write(command)  # send command to Arduino to trigger trial
             response = ser.readline().decode().strip()  # Read confirmation
             if response == 'd':  # check for valid confirmation message
                 timestamp = pd.Timestamp.now()     # Record when response is received, arduino code has completed execution

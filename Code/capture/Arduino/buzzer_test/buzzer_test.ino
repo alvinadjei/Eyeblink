@@ -11,6 +11,8 @@ Adafruit_NeoPixel strip(PIX_COUNT, PIX_PIN);
 // Define NeoPixel white light color
 uint32_t white = strip.Color(255, 255, 255);
 
+int freq;
+
 void setup() {
   // Setup neopixel strip
   strip.begin();
@@ -18,6 +20,10 @@ void setup() {
   
   // Initialize buzzer pin
   pinMode(BUZZER_PIN, OUTPUT); // Buzzer
+  
+  // Buzzer frequency
+  freq = 10;
+  freq *= 1000;
 
   // Initialize serial communication
   Serial.begin(9600);
@@ -29,11 +35,11 @@ void loop() {
   strip.show(); // Push data to NeoPixel
   Serial.println("on");
   
-  // Play buzzer for 3 seconds
-  tone(BUZZER_PIN, 10000);
+  // Play buzzer for 1 seconds
+  tone(BUZZER_PIN, freq);
   delay(1000);
 
-  // Turn off buzzer for 1 second
+  // Turn off buzzer for 3 second
   noTone(BUZZER_PIN);
   delay(3000);
 }
