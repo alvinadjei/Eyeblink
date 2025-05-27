@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Live Experiment Stream</title>
+    </head>
+    <body>
+        <h1>Experiment Livestream</h1>
+        <p>Trial Number: <span id="trial-num">Loading...</span></p>
+        <img src="{{ url_for('livestream') }}" width="640" height="480">
+
+        <script>
+            async function updateTrialNum() {
+                try {
+                    const response = await fetch('/trial');
+                    const data = await response.json();
+                    document.getElementById('trial-num').textContent = data.trial_num;
+                } catch (err) {
+                    console.error('Failed to fetch trial number:', err);
+                }
+            }
+
+            // Poll every 2 seconds
+            setInterval(updateTrialNum, 2000);
+            updateTrialNum(); // Initial call
+        </script>
+    </body>
+</html>
