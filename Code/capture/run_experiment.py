@@ -145,7 +145,7 @@ class CameraThread(QThread):
 
     def stop(self):
         self.running = False
-        self.wait()
+        # self.wait()
 
 class ExperimentThread(QThread):
     trial_started = pyqtSignal(int)  # Signal emitted when a trial starts
@@ -200,7 +200,7 @@ class ExperimentThread(QThread):
         # Ensure stability, trigger CS and US, handle timing
         window.ensure_stability(i)  # Make sure to use `MainWindow` methods safely
         self.trial_started.emit(self.trial_num)  # Signal to `MainWindow` that the trial has started
-        time.sleep(0.05)  # Simulate pre-CS timing
+        time.sleep(0.5)  # Start recording 500ms before CS onset
         cs_timestamp = window.stimuli(self.trial_has_puff, self.trial_tone)  # Execute CS and US        
         # Save video
         self.trial_completed.emit(self.trial_num)
