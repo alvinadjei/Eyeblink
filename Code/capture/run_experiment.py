@@ -1,5 +1,6 @@
 import sys
 import os
+import threading
 import time
 from datetime import datetime
 import serial
@@ -11,6 +12,7 @@ import pandas as pd
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen
 from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QHBoxLayout, QPushButton, QWidget
+from flask import Flask, Response, render_template
 
 # Add the project root directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -114,7 +116,9 @@ class CameraThread(QThread):
     def __init__(self, camera_index=0):
         super().__init__()
         self.camera_index = camera_index
+        self.frame = None
         self.running = False
+        self.lock = threading.Lock()
 
     def run(self):
 
@@ -139,13 +143,54 @@ class CameraThread(QThread):
                         frame = handler.get_image()
                         # frame_x, frame_y = frame.shape[1], frame.shape[0]
                         self.frame_ready.emit(frame)
+                        with self.lock:  # Update the frame in a thread-safe manner
+                            self.frame = frame
 
                 finally:
                     cam.stop_streaming()
+    
+    def get_latest_frame(self):
+        with self.lock:
+            return self.frame.copy() if self.frame is not None else None
 
     def stop(self):
         self.running = False
         # self.wait()
+
+class FlaskThread(QThread):
+    def __init__(self, camera_thread, main_window):
+        super().__init__()
+        self.camera_thread = camera_thread
+        self.main_window = main_window
+        self.app = Flask(__name__)
+        self._setup_routes()
+        
+    def _setup_routes(self):
+        @self.app.route('/')
+        def index():
+            return render_template('index.html')
+        
+        @self.app.route('/trial')
+        def trial():
+            return {'trial_num': self.main_window.trial_num}
+
+        @self.app.route('/livestream')
+        def livestream():
+            def generate():
+                while True:
+                    frame = self.camera_thread.get_latest_frame()
+                    if frame is not None:
+                        ret, buffer = cv2.imencode('.jpg', frame)
+                        if not ret:
+                            continue
+                        yield (b'--frame\r\n'
+                               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+                    else:
+                        time.sleep(0.01)  # Wait for a frame to be available
+            return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    
+    def run(self):
+        self.app.run(host='0.0.0.0', port=5000, threaded=True, use_reloader=False)
 
 class ExperimentThread(QThread):
     trial_started = pyqtSignal(int)  # Signal emitted when a trial starts
@@ -283,19 +328,23 @@ class MainWindow(QMainWindow):
         self.start_button.clicked.connect(self.start_experiment)
         self.layout.addWidget(self.start_button)
         self.stop_pressed = False  # keep track of whether experiment was stopped early
-
-        # Integrate CameraThread
-        self.camera_thread = CameraThread()
-        self.camera_thread.frame_ready.connect(self.update_frame)
-
-        # Current frame
-        self.current_frame = None
-
+        
         # Data
         self.fec_data = pd.DataFrame(columns=["Timestamp", "Trial #", "FEC"])
         self.stim_data = pd.DataFrame(columns=["Trial #", "CS Timestamp", "Airpuff", "Tone"])
         self.trial_num = 1
         self.last_trial_num = 0
+
+        # Integrate CameraThread
+        self.camera_thread = CameraThread()
+        self.camera_thread.frame_ready.connect(self.update_frame)
+        
+        # Integrate FlaskThread
+        self.flask_thread = FlaskThread(self.camera_thread, self)
+
+        # Current frame
+        self.current_frame = None
+
         
         # Ellipse data
         self.drawing_ellipse = False
@@ -332,7 +381,8 @@ class MainWindow(QMainWindow):
         self.experiment_thread.experiment_finished.connect(self.on_experiment_finished)
         self.experiment_thread.stability_error.connect(self.on_stability_error)
         self.experiment_thread.stim_collector.connect(self.save_stim_data)
-    
+        
+        
     def keyPressEvent(self, event):
         # Lighting cannot be changed once experiment begins
         if not self.experiment_running:
@@ -776,6 +826,11 @@ class MainWindow(QMainWindow):
             if self.camera_thread.isRunning():
                 self.camera_thread.stop()
                 self.camera_thread.wait()
+            
+            if self.flask_thread.isRunning():
+                self.flask_thread.stop()
+                self.flask_thread.wait()
+                
         except Exception as e:
             print(f"Error stopping threads: {e}")
 
@@ -783,7 +838,8 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    window.camera_thread.start()
-    sys.exit(app.exec_())
+    window = MainWindow()  # Create the main window instance
+    window.show()  # Show the main window
+    window.camera_thread.start()  # Start camera thread to capture video frames
+    window.flask_thread.start()  # Start Flask thread to serve video feed
+    sys.exit(app.exec_())  # Start the application event loop
