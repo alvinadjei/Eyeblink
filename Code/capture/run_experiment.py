@@ -24,13 +24,13 @@ num_trials = 110  # number of trials to run, keep as a multiple of 110
 ITI = 12.5  # 12.5 second (on average) inter-trial interval
 arduino_port = 'COM4'  # '/dev/cu.usbserial-01C60315'  # Match this to Arduino's port, check by running 'ls /dev/cu.*' in terminal on Mac
 baud_rate = 9600  # arduino baud rate
-tone_duration = 0.28     # Duration in seconds of CS
-sample_rate = 44100  # Sample rate in Hz of CS
+# tone_duration = 0.28     # Duration in seconds of CS
+# sample_rate = 44100  # Sample rate in Hz of CS
 binary_threshold = 55  # Any pixel value in the processed image below this value will be set to 0, and above this value will be set to 1
 stability_threshold = 0.6  # FEC value that eye must stay below for at least 200 ms before starting next trial, ~75% oprn
-stability_duration = 0.2  # 200 ms in seconds of stability check
-training = True  # If True, run 10 trials with no air puff; if false, run generalization experiment
-first_experiment_of_day = True
+stability_duration = 0.2  # 200 ms in seconds of eyelid stability check
+training = True  # If True, run training session; if false, run generalization session
+first_experiment_of_day = True  # For training session, if not the first attempt of the day you will be able to set number of trials to reach total of 110
 
 # Get the current datetime (used in saved-data file names)
 now = datetime.now()
@@ -80,7 +80,7 @@ else:
         while trial in no_puff_trials:
             trial = random.randint(0, num_trials-1)
         no_puff_trials.append(trial)
-        generalization_trials.append(trial + 1)
+        generalization_trials.append(trial + 1)  # I was kinda dumb and inconsitent with how I indexed trial numbers, but I'm in too deep and refuse to change it. Just trust that it works
     
     no_puff_trials.sort()
     generalization_trials.sort()
