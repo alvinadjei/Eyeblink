@@ -141,6 +141,7 @@ class CameraThread(QThread):
 
                     while self.running:
                         frame = handler.get_image()
+                        # frame = frame[:480, :640]  # slice frame to size compatible with LABVIEW (optional)
                         # frame_x, frame_y = frame.shape[1], frame.shape[0]
                         self.frame_ready.emit(frame)
                         with self.lock:  # Update the frame in a thread-safe manner
